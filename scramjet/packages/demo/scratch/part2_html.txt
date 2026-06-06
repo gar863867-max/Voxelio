@@ -1,0 +1,740 @@
+<!-- ======================== -->
+<!-- 1. BOOT SCREEN          -->
+<!-- ======================== -->
+<div id="boot-screen" class="boot-screen">
+  <div class="boot-content">
+    <div class="boot-logo">
+      <svg id="boot-logo-svg" viewBox="0 0 120 120" width="120" height="120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="60" r="55" stroke="white" stroke-width="2" opacity="0.3"/>
+        <circle cx="60" cy="60" r="40" stroke="white" stroke-width="1.5" opacity="0.5"/>
+        <circle cx="60" cy="60" r="25" stroke="white" stroke-width="1" opacity="0.7"/>
+        <circle cx="60" cy="60" r="8" fill="white" opacity="0.9"/>
+        <line x1="60" y1="5" x2="60" y2="35" stroke="white" stroke-width="1" opacity="0.4"/>
+        <line x1="60" y1="85" x2="60" y2="115" stroke="white" stroke-width="1" opacity="0.4"/>
+        <line x1="5" y1="60" x2="35" y2="60" stroke="white" stroke-width="1" opacity="0.4"/>
+        <line x1="85" y1="60" x2="115" y2="60" stroke="white" stroke-width="1" opacity="0.4"/>
+        <line x1="21" y1="21" x2="42" y2="42" stroke="white" stroke-width="1" opacity="0.3"/>
+        <line x1="78" y1="78" x2="99" y2="99" stroke="white" stroke-width="1" opacity="0.3"/>
+        <line x1="99" y1="21" x2="78" y2="42" stroke="white" stroke-width="1" opacity="0.3"/>
+        <line x1="42" y1="78" x2="21" y2="99" stroke="white" stroke-width="1" opacity="0.3"/>
+      </svg>
+      <h1 class="boot-title">Quantum OS</h1>
+    </div>
+    <div class="boot-progress-container">
+      <div id="boot-progress-bar" class="boot-progress-bar">
+        <div id="boot-progress-fill" class="boot-progress-fill"></div>
+      </div>
+      <p id="boot-status-text" class="boot-status-text">Initializing system...</p>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- 2. LOGIN SCREEN          -->
+<!-- ======================== -->
+<div id="login-screen" class="login-screen hidden">
+  <div class="login-background"></div>
+  <div class="login-datetime">
+    <div id="login-time" class="login-time">19:18</div>
+    <div id="login-date" class="login-date">Thursday, June 4</div>
+  </div>
+  <div class="login-container">
+    <div class="login-avatar" id="login-avatar">
+      <i data-lucide="user"></i>
+    </div>
+    <h2 id="login-username" class="login-username">Quantum User</h2>
+    <div class="login-input-group">
+      <input type="password" id="login-password" class="login-password" placeholder="Password" autocomplete="off"/>
+      <button id="login-submit" class="login-submit">
+        <i data-lucide="arrow-right"></i>
+      </button>
+    </div>
+    <p id="login-hint" class="login-hint">Press Enter or click arrow to sign in</p>
+  </div>
+  <div class="login-user-switcher" id="login-user-switcher">
+    <div class="switcher-user active" data-user="quantum" id="switcher-user-quantum">
+      <div class="switcher-avatar"><i data-lucide="user"></i></div>
+      <span>Quantum User</span>
+    </div>
+    <div class="switcher-user" data-user="guest" id="switcher-user-guest">
+      <div class="switcher-avatar"><i data-lucide="user"></i></div>
+      <span>Guest</span>
+    </div>
+    <div class="switcher-user" data-user="admin" id="switcher-user-admin">
+      <div class="switcher-avatar"><i data-lucide="shield"></i></div>
+      <span>Admin</span>
+    </div>
+  </div>
+  <div class="login-bottom-bar">
+    <button id="login-accessibility-btn" class="login-bottom-btn">
+      <i data-lucide="settings"></i>
+    </button>
+    <button id="login-wifi-btn" class="login-bottom-btn">
+      <i data-lucide="wifi"></i>
+    </button>
+    <button id="login-power-btn" class="login-bottom-btn">
+      <i data-lucide="power"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- 3. DESKTOP               -->
+<!-- ======================== -->
+<div id="desktop" class="desktop hidden">
+
+  <!-- 3a. Wallpaper Layer -->
+  <div id="desktop-wallpaper" class="wallpaper"></div>
+  <canvas id="particle-canvas"></canvas>
+
+  <!-- 3b. Desktop Icons Container -->
+  <div id="desktop-icons" class="desktop-icons">
+    <div class="desktop-icon" data-app="fileExplorer" id="desktop-icon-fileExplorer">
+      <i data-lucide="folder"></i>
+      <span>File Explorer</span>
+    </div>
+    <div class="desktop-icon" data-app="browser" id="desktop-icon-browser">
+      <i data-lucide="globe"></i>
+      <span>Browser</span>
+    </div>
+    <div class="desktop-icon" data-app="aiChat" id="desktop-icon-aiChat">
+      <i data-lucide="bot"></i>
+      <span>AI Chat</span>
+    </div>
+    <div class="desktop-icon" data-app="settings" id="desktop-icon-settings">
+      <i data-lucide="settings"></i>
+      <span>Settings</span>
+    </div>
+    <div class="desktop-icon" data-app="terminal" id="desktop-icon-terminal">
+      <i data-lucide="terminal"></i>
+      <span>Terminal</span>
+    </div>
+    <div class="desktop-icon" data-app="cloudGaming" id="desktop-icon-cloudGaming">
+      <i data-lucide="gamepad-2"></i>
+      <span>Cloud Gaming</span>
+    </div>
+    <div class="desktop-icon" data-app="calculator" id="desktop-icon-calculator">
+      <i data-lucide="calculator"></i>
+      <span>Calculator</span>
+    </div>
+    <div class="desktop-icon" data-app="textEditor" id="desktop-icon-textEditor">
+      <i data-lucide="file-text"></i>
+      <span>Text Editor</span>
+    </div>
+    <div class="desktop-icon" data-app="musicPlayer" id="desktop-icon-musicPlayer">
+      <i data-lucide="music"></i>
+      <span>Music Player</span>
+    </div>
+    <div class="desktop-icon" data-app="trash" id="desktop-icon-trash">
+      <i data-lucide="trash-2"></i>
+      <span>Trash</span>
+    </div>
+  </div>
+
+  <!-- 3c. Desktop Widgets Container -->
+  <div id="desktop-widgets" class="desktop-widgets">
+
+    <!-- Clock Widget -->
+    <div class="widget widget-clock" id="widget-clock">
+      <div class="widget-header">
+        <i data-lucide="clock"></i>
+        <span>Clock</span>
+      </div>
+      <div class="widget-body">
+        <div id="widget-clock-time" class="widget-clock-time">19:18:02</div>
+        <div id="widget-clock-date" class="widget-clock-date">Thursday, June 4, 2026</div>
+        <div id="widget-clock-timezone" class="widget-clock-timezone">GMT+1</div>
+      </div>
+    </div>
+
+    <!-- Calendar Widget -->
+    <div class="widget widget-calendar" id="widget-calendar">
+      <div class="widget-header">
+        <i data-lucide="calendar"></i>
+        <span>Calendar</span>
+      </div>
+      <div class="widget-body">
+        <div class="calendar-nav">
+          <button id="calendar-prev-btn" class="calendar-nav-btn"><i data-lucide="arrow-left"></i></button>
+          <span id="calendar-month-year">June 2026</span>
+          <button id="calendar-next-btn" class="calendar-nav-btn"><i data-lucide="arrow-right"></i></button>
+        </div>
+        <div class="calendar-weekdays">
+          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+        </div>
+        <div id="calendar-days" class="calendar-days"></div>
+      </div>
+    </div>
+
+    <!-- System Monitor Widget -->
+    <div class="widget widget-sysmonitor" id="widget-sysmonitor">
+      <div class="widget-header">
+        <i data-lucide="cpu"></i>
+        <span>System Monitor</span>
+      </div>
+      <div class="widget-body">
+        <div class="sysmonitor-item">
+          <div class="sysmonitor-label">
+            <i data-lucide="cpu"></i>
+            <span>CPU</span>
+          </div>
+          <div class="sysmonitor-bar">
+            <div id="sysmonitor-cpu-fill" class="sysmonitor-fill" style="width: 34%;"></div>
+          </div>
+          <span id="sysmonitor-cpu-text" class="sysmonitor-value">34%</span>
+        </div>
+        <div class="sysmonitor-item">
+          <div class="sysmonitor-label">
+            <i data-lucide="hard-drive"></i>
+            <span>RAM</span>
+          </div>
+          <div class="sysmonitor-bar">
+            <div id="sysmonitor-ram-fill" class="sysmonitor-fill" style="width: 58%;"></div>
+          </div>
+          <span id="sysmonitor-ram-text" class="sysmonitor-value">58%</span>
+        </div>
+        <div class="sysmonitor-item">
+          <div class="sysmonitor-label">
+            <i data-lucide="hard-drive"></i>
+            <span>Disk</span>
+          </div>
+          <div class="sysmonitor-bar">
+            <div id="sysmonitor-disk-fill" class="sysmonitor-fill" style="width: 45%;"></div>
+          </div>
+          <span id="sysmonitor-disk-text" class="sysmonitor-value">45%</span>
+        </div>
+        <div class="sysmonitor-item">
+          <div class="sysmonitor-label">
+            <i data-lucide="network"></i>
+            <span>Network</span>
+          </div>
+          <div class="sysmonitor-bar">
+            <div id="sysmonitor-net-fill" class="sysmonitor-fill" style="width: 12%;"></div>
+          </div>
+          <span id="sysmonitor-net-text" class="sysmonitor-value">12%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes Widget -->
+    <div class="widget widget-notes" id="widget-notes">
+      <div class="widget-header">
+        <i data-lucide="file-text"></i>
+        <span>Quick Notes</span>
+      </div>
+      <div class="widget-body">
+        <textarea id="widget-notes-input" class="widget-notes-input" placeholder="Type your notes here..."></textarea>
+      </div>
+    </div>
+
+    <!-- Quick Launch Widget -->
+    <div class="widget widget-quicklaunch" id="widget-quicklaunch">
+      <div class="widget-header">
+        <i data-lucide="zap"></i>
+        <span>Quick Launch</span>
+      </div>
+      <div class="widget-body">
+        <div class="quicklaunch-grid">
+          <button class="quicklaunch-btn" data-app="browser" id="quicklaunch-browser">
+            <i data-lucide="globe"></i>
+            <span>Browser</span>
+          </button>
+          <button class="quicklaunch-btn" data-app="terminal" id="quicklaunch-terminal">
+            <i data-lucide="terminal"></i>
+            <span>Terminal</span>
+          </button>
+          <button class="quicklaunch-btn" data-app="fileExplorer" id="quicklaunch-fileExplorer">
+            <i data-lucide="folder"></i>
+            <span>Files</span>
+          </button>
+          <button class="quicklaunch-btn" data-app="settings" id="quicklaunch-settings">
+            <i data-lucide="settings"></i>
+            <span>Settings</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 3d. Desktop Context Menu -->
+  <div id="desktop-context-menu" class="context-menu hidden">
+    <div class="context-menu-item" id="ctx-new-folder">
+      <i data-lucide="folder"></i>
+      <span>New Folder</span>
+    </div>
+    <div class="context-menu-item" id="ctx-new-file">
+      <i data-lucide="file"></i>
+      <span>New File</span>
+    </div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" id="ctx-paste">
+      <i data-lucide="clipboard"></i>
+      <span>Paste</span>
+      <span class="context-shortcut">Ctrl+V</span>
+    </div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" id="ctx-refresh">
+      <i data-lucide="rotate-cw"></i>
+      <span>Refresh</span>
+      <span class="context-shortcut">F5</span>
+    </div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" id="ctx-display-settings">
+      <i data-lucide="monitor"></i>
+      <span>Display Settings</span>
+    </div>
+    <div class="context-menu-item" id="ctx-personalize">
+      <i data-lucide="palette"></i>
+      <span>Personalize</span>
+    </div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item has-submenu" id="ctx-sort-by">
+      <i data-lucide="arrow-down-up"></i>
+      <span>Sort By</span>
+      <i data-lucide="chevron-right" class="submenu-arrow"></i>
+      <div class="context-submenu" id="ctx-sort-submenu">
+        <div class="context-menu-item" id="ctx-sort-name">
+          <span>Name</span>
+        </div>
+        <div class="context-menu-item" id="ctx-sort-size">
+          <span>Size</span>
+        </div>
+        <div class="context-menu-item" id="ctx-sort-date">
+          <span>Date Modified</span>
+        </div>
+        <div class="context-menu-item" id="ctx-sort-type">
+          <span>Type</span>
+        </div>
+      </div>
+    </div>
+    <div class="context-menu-item has-submenu" id="ctx-view">
+      <i data-lucide="layout-grid"></i>
+      <span>View</span>
+      <i data-lucide="chevron-right" class="submenu-arrow"></i>
+      <div class="context-submenu" id="ctx-view-submenu">
+        <div class="context-menu-item" id="ctx-view-large">
+          <span>Large Icons</span>
+        </div>
+        <div class="context-menu-item" id="ctx-view-medium">
+          <span>Medium Icons</span>
+        </div>
+        <div class="context-menu-item" id="ctx-view-small">
+          <span>Small Icons</span>
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" id="ctx-view-auto">
+          <span>Auto Arrange</span>
+        </div>
+        <div class="context-menu-item" id="ctx-view-grid">
+          <span>Align to Grid</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3e. Selection Rectangle -->
+  <div id="selection-rect" class="selection-rect hidden"></div>
+
+</div>
+
+<!-- ======================== -->
+<!-- 4. DOCK                  -->
+<!-- ======================== -->
+<div id="dock" class="dock hidden">
+  <div class="dock-container" id="dock-container">
+    <div class="dock-item" data-app="fileExplorer" id="dock-fileExplorer">
+      <i data-lucide="folder"></i>
+      <div class="dock-tooltip">File Explorer</div>
+      <div class="dock-indicator"></div>
+    </div>
+    <div class="dock-item" data-app="browser" id="dock-browser">
+      <i data-lucide="globe"></i>
+      <div class="dock-tooltip">Browser</div>
+      <div class="dock-indicator"></div>
+    </div>
+    <div class="dock-item" data-app="aiChat" id="dock-aiChat">
+      <i data-lucide="bot"></i>
+      <div class="dock-tooltip">AI Chat</div>
+      <div class="dock-indicator"></div>
+    </div>
+    <div class="dock-item" data-app="settings" id="dock-settings">
+      <i data-lucide="settings"></i>
+      <div class="dock-tooltip">Settings</div>
+      <div class="dock-indicator"></div>
+    </div>
+    <div class="dock-item" data-app="terminal" id="dock-terminal">
+      <i data-lucide="terminal"></i>
+      <div class="dock-tooltip">Terminal</div>
+      <div class="dock-indicator"></div>
+    </div>
+    <div class="dock-item" data-app="cloudGaming" id="dock-cloudGaming">
+      <i data-lucide="gamepad-2"></i>
+      <div class="dock-tooltip">Cloud Gaming</div>
+      <div class="dock-indicator"></div>
+    </div>
+    <div class="dock-item" data-app="musicPlayer" id="dock-musicPlayer">
+      <i data-lucide="music"></i>
+      <div class="dock-tooltip">Music Player</div>
+      <div class="dock-indicator"></div>
+    </div>
+    <div class="dock-separator"></div>
+    <div class="dock-item" data-app="trash" id="dock-trash">
+      <i data-lucide="trash-2"></i>
+      <div class="dock-tooltip">Trash</div>
+      <div class="dock-indicator"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- 5. TASKBAR               -->
+<!-- ======================== -->
+<div id="taskbar" class="taskbar hidden">
+  <div class="taskbar-left">
+    <button id="start-btn" class="taskbar-start">
+      <i data-lucide="layout-grid"></i>
+    </button>
+    <button id="search-btn" class="taskbar-search">
+      <i data-lucide="search"></i>
+    </button>
+  </div>
+  <div class="taskbar-center">
+    <div id="taskbar-apps" class="taskbar-apps"></div>
+  </div>
+  <div class="taskbar-right">
+    <div id="system-tray" class="system-tray">
+      <button id="tray-wifi" class="tray-icon" title="WiFi">
+        <i data-lucide="wifi"></i>
+      </button>
+      <button id="tray-volume" class="tray-icon" title="Volume">
+        <i data-lucide="volume-2"></i>
+      </button>
+      <button id="tray-battery" class="tray-icon" title="Battery">
+        <i data-lucide="battery-full"></i>
+      </button>
+      <button id="tray-notifications" class="tray-icon tray-notification-btn" title="Notifications">
+        <i data-lucide="bell"></i>
+        <span id="notification-badge" class="notification-badge">3</span>
+      </button>
+      <div id="tray-clock" class="tray-clock" title="Click for calendar">
+        <span id="tray-clock-time" class="tray-clock-time">19:18</span>
+        <span id="tray-clock-date" class="tray-clock-date">6/4/2026</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- 6. START MENU            -->
+<!-- ======================== -->
+<div id="start-menu" class="start-menu hidden">
+  <div class="start-menu-inner">
+
+    <!-- Search Bar -->
+    <div class="start-search-container">
+      <i data-lucide="search"></i>
+      <input type="text" id="start-search-input" class="start-search-input" placeholder="Type to search..." autocomplete="off"/>
+    </div>
+
+    <!-- Pinned Apps Section -->
+    <div class="start-section">
+      <div class="start-section-header">
+        <h3>Pinned</h3>
+        <button id="start-pinned-all-btn" class="start-section-btn">All Apps <i data-lucide="chevron-right"></i></button>
+      </div>
+      <div id="start-pinned-grid" class="start-pinned-grid">
+        <div class="start-pinned-item" data-app="fileExplorer" id="start-pin-fileExplorer">
+          <div class="start-pinned-icon"><i data-lucide="folder"></i></div>
+          <span>File Explorer</span>
+        </div>
+        <div class="start-pinned-item" data-app="browser" id="start-pin-browser">
+          <div class="start-pinned-icon"><i data-lucide="globe"></i></div>
+          <span>Browser</span>
+        </div>
+        <div class="start-pinned-item" data-app="aiChat" id="start-pin-aiChat">
+          <div class="start-pinned-icon"><i data-lucide="bot"></i></div>
+          <span>AI Chat</span>
+        </div>
+        <div class="start-pinned-item" data-app="cloudGaming" id="start-pin-cloudGaming">
+          <div class="start-pinned-icon"><i data-lucide="gamepad-2"></i></div>
+          <span>Cloud Gaming</span>
+        </div>
+        <div class="start-pinned-item" data-app="settings" id="start-pin-settings">
+          <div class="start-pinned-icon"><i data-lucide="settings"></i></div>
+          <span>Settings</span>
+        </div>
+        <div class="start-pinned-item" data-app="terminal" id="start-pin-terminal">
+          <div class="start-pinned-icon"><i data-lucide="terminal"></i></div>
+          <span>Terminal</span>
+        </div>
+        <div class="start-pinned-item" data-app="calculator" id="start-pin-calculator">
+          <div class="start-pinned-icon"><i data-lucide="calculator"></i></div>
+          <span>Calculator</span>
+        </div>
+        <div class="start-pinned-item" data-app="textEditor" id="start-pin-textEditor">
+          <div class="start-pinned-icon"><i data-lucide="file-text"></i></div>
+          <span>Text Editor</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recommended Section -->
+    <div class="start-section">
+      <div class="start-section-header">
+        <h3>Recommended</h3>
+        <button id="start-recommended-more-btn" class="start-section-btn">More <i data-lucide="chevron-right"></i></button>
+      </div>
+      <div id="start-recommended-list" class="start-recommended-list">
+        <div class="start-recommended-item" id="start-rec-1">
+          <div class="start-recommended-icon"><i data-lucide="file-text"></i></div>
+          <div class="start-recommended-info">
+            <span class="start-recommended-name">readme.md</span>
+            <span class="start-recommended-meta">Yesterday</span>
+          </div>
+        </div>
+        <div class="start-recommended-item" id="start-rec-2">
+          <div class="start-recommended-icon"><i data-lucide="image"></i></div>
+          <div class="start-recommended-info">
+            <span class="start-recommended-name">wallpaper.png</span>
+            <span class="start-recommended-meta">2 days ago</span>
+          </div>
+        </div>
+        <div class="start-recommended-item" id="start-rec-3">
+          <div class="start-recommended-icon"><i data-lucide="file"></i></div>
+          <div class="start-recommended-info">
+            <span class="start-recommended-name">project_notes.txt</span>
+            <span class="start-recommended-meta">Last week</span>
+          </div>
+        </div>
+        <div class="start-recommended-item" id="start-rec-4">
+          <div class="start-recommended-icon"><i data-lucide="download"></i></div>
+          <div class="start-recommended-info">
+            <span class="start-recommended-name">quantum-sdk-v2.zip</span>
+            <span class="start-recommended-meta">Last week</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="start-bottom">
+      <div class="start-user" id="start-user-profile">
+        <div class="start-user-avatar"><i data-lucide="user"></i></div>
+        <span id="start-user-name">Quantum User</span>
+      </div>
+      <button id="start-power-btn" class="start-power-btn">
+        <i data-lucide="power"></i>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- 7. SEARCH OVERLAY        -->
+<!-- ======================== -->
+<div id="search-overlay" class="search-overlay hidden">
+  <div class="search-overlay-backdrop" id="search-overlay-backdrop"></div>
+  <div class="search-overlay-content">
+    <div class="search-overlay-input-container">
+      <i data-lucide="search"></i>
+      <input type="text" id="search-overlay-input" class="search-overlay-input" placeholder="Search apps, files, settings..." autocomplete="off"/>
+      <span class="search-shortcut-hint">
+        <kbd>Ctrl</kbd> + <kbd>Space</kbd>
+      </span>
+    </div>
+    <div id="search-results" class="search-results">
+      <div class="search-results-section" id="search-results-apps">
+        <h4 class="search-results-title"><i data-lucide="layout-grid"></i> Apps</h4>
+        <div class="search-results-list" id="search-results-apps-list"></div>
+      </div>
+      <div class="search-results-section" id="search-results-files">
+        <h4 class="search-results-title"><i data-lucide="file"></i> Files</h4>
+        <div class="search-results-list" id="search-results-files-list"></div>
+      </div>
+      <div class="search-results-section" id="search-results-settings">
+        <h4 class="search-results-title"><i data-lucide="settings"></i> Settings</h4>
+        <div class="search-results-list" id="search-results-settings-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- 8. NOTIFICATION CENTER   -->
+<!-- ======================== -->
+<div id="notification-center" class="notification-center hidden">
+  <div class="notification-center-inner">
+
+    <!-- Header -->
+    <div class="notification-header">
+      <h3>Notifications</h3>
+      <button id="notification-clear-all" class="notification-clear-btn">
+        <i data-lucide="x"></i>
+        <span>Clear All</span>
+      </button>
+    </div>
+
+    <!-- Notification List -->
+    <div id="notification-list" class="notification-list">
+      <div class="notification-item" id="notif-1">
+        <div class="notification-item-icon"><i data-lucide="download"></i></div>
+        <div class="notification-item-content">
+          <span class="notification-item-title">Download Complete</span>
+          <span class="notification-item-text">quantum-sdk-v2.zip has been downloaded.</span>
+          <span class="notification-item-time">2 minutes ago</span>
+        </div>
+        <button class="notification-item-close" id="notif-close-1"><i data-lucide="x"></i></button>
+      </div>
+      <div class="notification-item" id="notif-2">
+        <div class="notification-item-icon"><i data-lucide="shield"></i></div>
+        <div class="notification-item-content">
+          <span class="notification-item-title">Security Scan</span>
+          <span class="notification-item-text">System scan completed. No threats found.</span>
+          <span class="notification-item-time">15 minutes ago</span>
+        </div>
+        <button class="notification-item-close" id="notif-close-2"><i data-lucide="x"></i></button>
+      </div>
+      <div class="notification-item" id="notif-3">
+        <div class="notification-item-icon"><i data-lucide="upload"></i></div>
+        <div class="notification-item-content">
+          <span class="notification-item-title">System Update</span>
+          <span class="notification-item-text">Quantum OS v3.2 is available.</span>
+          <span class="notification-item-time">1 hour ago</span>
+        </div>
+        <button class="notification-item-close" id="notif-close-3"><i data-lucide="x"></i></button>
+      </div>
+    </div>
+
+    <!-- Quick Settings -->
+    <div class="quick-settings">
+      <h4 class="quick-settings-title">Quick Settings</h4>
+      <div class="quick-settings-grid" id="quick-settings-grid">
+        <button class="quick-setting-tile active" id="qs-wifi" data-setting="wifi">
+          <i data-lucide="wifi"></i>
+          <span>WiFi</span>
+        </button>
+        <button class="quick-setting-tile" id="qs-bluetooth" data-setting="bluetooth">
+          <i data-lucide="bluetooth"></i>
+          <span>Bluetooth</span>
+        </button>
+        <button class="quick-setting-tile" id="qs-nightlight" data-setting="nightlight">
+          <i data-lucide="moon"></i>
+          <span>Night Light</span>
+        </button>
+        <button class="quick-setting-tile" id="qs-focus" data-setting="focus">
+          <i data-lucide="star"></i>
+          <span>Focus</span>
+        </button>
+        <button class="quick-setting-tile" id="qs-airplane" data-setting="airplane">
+          <i data-lucide="plane"></i>
+          <span>Airplane</span>
+        </button>
+        <button class="quick-setting-tile" id="qs-battery-saver" data-setting="batterySaver">
+          <i data-lucide="battery-full"></i>
+          <span>Battery Saver</span>
+        </button>
+      </div>
+      <div class="quick-settings-sliders">
+        <div class="quick-setting-slider" id="qs-brightness-slider">
+          <i data-lucide="sun"></i>
+          <input type="range" id="qs-brightness" class="qs-slider" min="0" max="100" value="80"/>
+          <span id="qs-brightness-value">80%</span>
+        </div>
+        <div class="quick-setting-slider" id="qs-volume-slider">
+          <i data-lucide="volume-2"></i>
+          <input type="range" id="qs-volume" class="qs-slider" min="0" max="100" value="65"/>
+          <span id="qs-volume-value">65%</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- 9. TOAST CONTAINER       -->
+<!-- ======================== -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ======================== -->
+<!-- 10. WINDOW CONTAINER     -->
+<!-- ======================== -->
+<div id="window-container" class="window-container"></div>
+
+<!-- ======================== -->
+<!-- 11. SNAP PREVIEW         -->
+<!-- ======================== -->
+<div id="snap-preview" class="snap-preview hidden"></div>
+
+<!-- ======================== -->
+<!-- 12. WORKSPACE OVERVIEW   -->
+<!-- ======================== -->
+<div id="workspace-overview" class="workspace-overview hidden">
+  <div class="workspace-overview-inner">
+    <h2 class="workspace-overview-title">Workspaces</h2>
+    <div id="workspace-thumbnails" class="workspace-thumbnails">
+      <div class="workspace-thumbnail active" id="workspace-thumb-1" data-workspace="1">
+        <div class="workspace-preview">
+          <span class="workspace-label">Desktop 1</span>
+        </div>
+      </div>
+      <div class="workspace-thumbnail" id="workspace-thumb-2" data-workspace="2">
+        <div class="workspace-preview">
+          <span class="workspace-label">Desktop 2</span>
+        </div>
+      </div>
+    </div>
+    <button id="workspace-add-btn" class="workspace-add-btn">
+      <i data-lucide="plus"></i>
+      <span>New Desktop</span>
+    </button>
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- 13. CLOUD GAME MODAL     -->
+<!-- ======================== -->
+<div id="cloud-game-modal" class="modal-overlay hidden">
+  <div class="modal-content" id="cloud-game-modal-content">
+    <button id="cloud-game-modal-close" class="modal-close-btn">
+      <i data-lucide="x"></i>
+    </button>
+    <div class="modal-game-hero">
+      <img id="cloud-game-modal-image" class="modal-game-image" src="" alt="Game Cover"/>
+      <div class="modal-game-hero-overlay"></div>
+    </div>
+    <div class="modal-game-info">
+      <h2 id="cloud-game-modal-title" class="modal-game-title">Game Title</h2>
+      <p id="cloud-game-modal-name" class="modal-game-name">Game Developer</p>
+      <div class="modal-game-meta">
+        <span class="modal-game-tag"><i data-lucide="star"></i> 4.5</span>
+        <span class="modal-game-tag"><i data-lucide="gamepad-2"></i> Action</span>
+        <span class="modal-game-tag"><i data-lucide="monitor"></i> Cloud</span>
+      </div>
+      <div class="modal-game-actions">
+        <button id="cloud-game-play-proxy" class="modal-btn modal-btn-primary">
+          <i data-lucide="shield"></i>
+          <span>Play via Proxy</span>
+        </button>
+        <button id="cloud-game-play-direct" class="modal-btn modal-btn-secondary">
+          <i data-lucide="globe"></i>
+          <span>Play Direct</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== -->
+<!-- LUCIDE ICONS CDN SCRIPT  -->
+<!-- ======================== -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  });
+</script>

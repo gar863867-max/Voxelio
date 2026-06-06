@@ -1,0 +1,2421 @@
+/**
+ * QUANTUM OS — Complete Applications System (Part 4)
+ * A premium dark/monochrome aesthetic applications suite.
+ * Lucide icons used throughout: <i data-lucide="icon-name"></i>
+ */
+
+'use strict';
+
+const AppRegistry = {
+  apps: new Map(),
+
+  register(appDef) {
+    // appDef: { id, name, icon, category, defaultWidth, defaultHeight, singleton, component }
+    this.apps.set(appDef.id, appDef);
+  },
+
+  open(appId, options = {}) {
+    const appDef = this.apps.get(appId);
+    if (!appDef) {
+      console.error(`App ${appId} is not registered.`);
+      return;
+    }
+
+    if (appDef.singleton) {
+      const activeWinId = Array.from(QuantumOS.WindowManager.windows.keys()).find(id => id.startsWith(appId));
+      if (activeWinId) {
+        QuantumOS.WindowManager.focus(activeWinId);
+        const win = QuantumOS.WindowManager.windows.get(activeWinId);
+        if (appDef.component) {
+          const bodyEl = win.element.querySelector('.window-body');
+          appDef.component(bodyEl, options);
+        }
+        return win;
+      }
+    }
+
+    const winId = appDef.singleton ? appId : `${appId}_${Math.random().toString(36).substr(2, 9)}`;
+    const win = QuantumOS.WindowManager.createWindow({
+      id: winId,
+      title: appDef.name,
+      icon: appDef.icon,
+      w: options.w || appDef.defaultWidth || 640,
+      h: options.h || appDef.defaultHeight || 440,
+      content: ''
+    });
+
+    const bodyEl = win.element.querySelector('.window-body');
+    if (appDef.component) {
+      appDef.component(bodyEl, options);
+    }
+
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+    }
+
+    return win;
+  },
+
+  getAll() {
+    return Array.from(this.apps.values());
+  },
+
+  search(query) {
+    if (!query) return this.getAll();
+    const q = query.toLowerCase();
+    return this.getAll().filter(app =>
+      app.name.toLowerCase().includes(q) ||
+      (app.category && app.category.toLowerCase().includes(q))
+    );
+  },
+
+  isRunning(appId) {
+    return Array.from(QuantumOS.WindowManager.windows.keys()).some(id => id === appId || id.startsWith(appId + '_'));
+  }
+};
+
+window.AppRegistry = AppRegistry;
+
+// Hook desktop/startmenu launchers to AppRegistry
+QuantumOS.apps = {
+  fileExplorer: { launch(path) { AppRegistry.open('fileExplorer', { path }); } },
+  browser: { launch(url) { AppRegistry.open('browser', { url }); } },
+  aiChat: { launch() { AppRegistry.open('aiChat'); } },
+  settings: { launch(cat) { AppRegistry.open('settings', { category: cat }); } },
+  terminal: { launch() { AppRegistry.open('terminal'); } },
+  cloudGaming: { launch() { AppRegistry.open('cloudGaming'); } },
+  calculator: { launch() { AppRegistry.open('calculator'); } },
+  textEditor: { launch(filePath) { AppRegistry.open('textEditor', { filePath }); } },
+  musicPlayer: { launch() { AppRegistry.open('musicPlayer'); } },
+  gamesBrowser: { launch() { AppRegistry.open('gamesBrowser'); } }
+};
+
+// ==========================================
+// 1. FILE EXPLORER APP
+// ==========================================
+AppRegistry.register({
+  id: 'fileExplorer',
+  name: 'File Explorer',
+  icon: 'folder',
+  category: 'System',
+  defaultWidth: 800,
+  defaultHeight: 500,
+  singleton: false,
+  component: function(container, options) {
+    let currentPath = options.path || '/Desktop';
+    let historyStack = [];
+    let forwardStack = [];
+    let viewMode = 'grid';
+    let selectedItems = new Set();
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; height:100%; color:var(--t1); font-family:var(--font-sans); background:var(--bg2);">
+        <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--border); background:var(--bg3); flex-shrink:0;">
+          <button class="btn-back" style="padding:4px 8px; border-radius:4px; opacity:0.5; color:inherit;"><i data-lucide="arrow-left" style="width:14px; height:14px;"></i></button>
+          <button class="btn-forward" style="padding:4px 8px; border-radius:4px; opacity:0.5; color:inherit;"><i data-lucide="arrow-right" style="width:14px; height:14px;"></i></button>
+          <button class="btn-up" style="padding:4px 8px; border-radius:4px; color:inherit;"><i data-lucide="arrow-up" style="width:14px; height:14px;"></i></button>
+          <button class="btn-refresh" style="padding:4px 8px; border-radius:4px; color:inherit;"><i data-lucide="rotate-cw" style="width:14px; height:14px;"></i></button>
+          <input type="text" class="explorer-path" style="flex:1; padding:4px 8px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; font-family:var(--font-mono); font-size:11px; color:inherit; outline:none;" value="${currentPath}" />
+          <button class="btn-new-folder" title="New Folder" style="padding:4px 8px; border-radius:4px; color:inherit;"><i data-lucide="folder-plus" style="width:14px; height:14px;"></i></button>
+          <button class="btn-new-file" title="New File" style="padding:4px 8px; border-radius:4px; color:inherit;"><i data-lucide="file-plus" style="width:14px; height:14px;"></i></button>
+          <button class="btn-toggle-view" style="padding:4px 8px; border-radius:4px; color:inherit;"><i data-lucide="layout-grid" style="width:14px; height:14px;"></i></button>
+          <input type="text" class="explorer-search" placeholder="Search..." style="width:120px; padding:4px 8px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; font-size:12px; color:inherit; outline:none;" />
+        </div>
+        <div style="display:flex; flex:1; overflow:hidden;">
+          <aside style="width:180px; border-right:1px solid var(--border); background:var(--bg); padding:12px; display:flex; flex-direction:column; gap:16px; overflow-y:auto; flex-shrink:0;">
+            <div>
+              <div style="font-size:10px; text-transform:uppercase; color:var(--t3); font-weight:700; margin-bottom:8px; letter-spacing:1px;">Favorites</div>
+              <ul style="display:flex; flex-direction:column; gap:4px; font-size:12px; list-style:none;">
+                <li class="sidebar-link" data-path="/Desktop" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="monitor" style="width:14px; height:14px;"></i>Desktop</li>
+                <li class="sidebar-link" data-path="/Documents" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="file-text" style="width:14px; height:14px;"></i>Documents</li>
+                <li class="sidebar-link" data-path="/Downloads" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="download" style="width:14px; height:14px;"></i>Downloads</li>
+                <li class="sidebar-link" data-path="/Music" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="music" style="width:14px; height:14px;"></i>Music</li>
+                <li class="sidebar-link" data-path="/Pictures" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="image" style="width:14px; height:14px;"></i>Pictures</li>
+                <li class="sidebar-link" data-path="/Videos" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="video" style="width:14px; height:14px;"></i>Videos</li>
+                <li class="sidebar-link" data-path="/Trash" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i>Trash</li>
+              </ul>
+            </div>
+          </aside>
+          <div class="explorer-grid-container" style="flex:1; padding:16px; overflow-y:auto; position:relative; background:var(--bg2);">
+            <div class="explorer-view-list" style="display:flex; flex-direction:column; gap:4px;"></div>
+            <div class="explorer-view-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:12px; align-content:start;"></div>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 12px; border-top:1px solid var(--border); background:var(--bg3); font-size:11px; color:var(--t3); flex-shrink:0;">
+          <div class="status-left">0 items</div>
+          <div>Virtual Disk Persistent</div>
+        </div>
+      </div>
+    `;
+
+    const gridContainer = container.querySelector('.explorer-grid-container');
+    const viewGrid = container.querySelector('.explorer-view-grid');
+    const viewList = container.querySelector('.explorer-view-list');
+    const pathInput = container.querySelector('.explorer-path');
+    const btnBack = container.querySelector('.btn-back');
+    const btnForward = container.querySelector('.btn-forward');
+    const btnUp = container.querySelector('.btn-up');
+    const btnRefresh = container.querySelector('.btn-refresh');
+    const btnNewFolder = container.querySelector('.btn-new-folder');
+    const btnNewFile = container.querySelector('.btn-new-file');
+    const btnToggleView = container.querySelector('.btn-toggle-view');
+    const searchInput = container.querySelector('.explorer-search');
+    const sidebarLinks = container.querySelectorAll('.sidebar-link');
+    const statusLeft = container.querySelector('.status-left');
+
+    function updateToolbar() {
+      btnBack.style.opacity = historyStack.length > 0 ? '1' : '0.5';
+      btnForward.style.opacity = forwardStack.length > 0 ? '1' : '0.5';
+    }
+
+    function navigateTo(path, pushToHistory = true) {
+      if (pushToHistory && currentPath !== path) {
+        historyStack.push(currentPath);
+        forwardStack = [];
+      }
+      currentPath = path;
+      pathInput.value = currentPath;
+      updateToolbar();
+      renderContents();
+    }
+
+    function renderContents() {
+      sidebarLinks.forEach(link => {
+        const linkPath = link.getAttribute('data-path');
+        link.style.background = linkPath === currentPath ? 'rgba(255,255,255,0.06)' : 'transparent';
+      });
+
+      const items = QuantumOS.FileSystem.list(currentPath);
+      const query = searchInput.value.toLowerCase();
+      const filtered = items.filter(f => f.name.toLowerCase().includes(query));
+
+      selectedItems.clear();
+      statusLeft.innerText = `${filtered.length} items`;
+
+      if (viewMode === 'grid') {
+        viewList.style.display = 'none';
+        viewGrid.style.display = 'grid';
+        viewGrid.innerHTML = '';
+        if (filtered.length === 0) {
+          viewGrid.innerHTML = '<div style="grid-column:1/-1; color:var(--t3); font-size:12px; padding:8px;">Folder is empty</div>';
+          return;
+        }
+
+        filtered.forEach(item => {
+          const el = document.createElement('div');
+          el.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px; border-radius:6px; cursor:pointer; text-align:center; font-size:11px; transition:background 0.15s;';
+          const icon = item.type === 'directory' ? 'folder' : QuantumOS.DesktopManager.getFileIcon(item.name);
+          el.innerHTML = `
+            <div style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:6px;">
+              <i data-lucide="${icon}" style="width:20px; height:20px;"></i>
+            </div>
+            <span style="width:100%; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; color:var(--t2);">${item.name}</span>
+          `;
+
+          el.setAttribute('draggable', 'true');
+          el.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', `path:${currentPath === '/' ? '' : currentPath}/${item.name}`);
+          });
+
+          if (item.type === 'directory') {
+            el.addEventListener('dragover', (e) => e.preventDefault());
+            el.addEventListener('drop', (e) => {
+              e.preventDefault();
+              const src = e.dataTransfer.getData('text/plain');
+              if (src && src.startsWith('path:')) {
+                const srcPath = src.replace('path:', '');
+                const destPath = `${currentPath === '/' ? '' : currentPath}/${item.name}`;
+                if (srcPath !== destPath && !srcPath.startsWith(destPath + '/')) {
+                  QuantumOS.FileSystem.move(srcPath, destPath);
+                  renderContents();
+                }
+              }
+            });
+          }
+
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (e.ctrlKey) {
+              if (selectedItems.has(item.name)) selectedItems.delete(item.name);
+              else selectedItems.add(item.name);
+            } else {
+              selectedItems.clear();
+              selectedItems.add(item.name);
+              viewGrid.querySelectorAll('div').forEach(child => child.style.background = 'transparent');
+            }
+            el.style.background = selectedItems.has(item.name) ? 'rgba(255,255,255,0.06)' : 'transparent';
+            statusLeft.innerText = `${filtered.length} items (${selectedItems.size} selected)`;
+          });
+
+          el.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            const fullPath = (currentPath === '/' ? '' : currentPath) + '/' + item.name;
+            if (item.type === 'directory') {
+              navigateTo(fullPath);
+            } else {
+              const ext = item.name.split('.').pop().toLowerCase();
+              if (['mp3', 'wav', 'ogg'].includes(ext)) {
+                QuantumOS.apps.musicPlayer.launch(fullPath);
+              } else if (['html', 'htm'].includes(ext)) {
+                QuantumOS.apps.browser.launch(fullPath);
+              } else {
+                QuantumOS.apps.textEditor.launch(fullPath);
+              }
+            }
+          });
+
+          el.addEventListener('contextmenu', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            selectedItems.clear();
+            selectedItems.add(item.name);
+            showMenu(e.clientX, e.clientY, item);
+          });
+
+          viewGrid.appendChild(el);
+        });
+      } else {
+        viewGrid.style.display = 'none';
+        viewList.style.display = 'flex';
+        viewList.innerHTML = '';
+        if (filtered.length === 0) {
+          viewList.innerHTML = '<div style="color:var(--t3); font-size:12px; padding:8px;">Folder is empty</div>';
+          return;
+        }
+
+        filtered.forEach(item => {
+          const el = document.createElement('div');
+          el.style.cssText = 'display:flex; align-items:center; gap:12px; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; transition:background 0.15s; color:var(--t2);';
+          const icon = item.type === 'directory' ? 'folder' : QuantumOS.DesktopManager.getFileIcon(item.name);
+          el.innerHTML = `
+            <i data-lucide="${icon}" style="width:16px; height:16px;"></i>
+            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.name}</span>
+            <span style="color:var(--t3); width:100px;">${item.type}</span>
+          `;
+
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedItems.clear();
+            selectedItems.add(item.name);
+            viewList.querySelectorAll('div').forEach(child => child.style.background = 'transparent');
+            el.style.background = 'rgba(255,255,255,0.06)';
+          });
+
+          el.addEventListener('dblclick', () => {
+            const fullPath = (currentPath === '/' ? '' : currentPath) + '/' + item.name;
+            if (item.type === 'directory') {
+              navigateTo(fullPath);
+            } else {
+              QuantumOS.apps.textEditor.launch(fullPath);
+            }
+          });
+
+          el.addEventListener('contextmenu', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            showMenu(e.clientX, e.clientY, item);
+          });
+
+          viewList.appendChild(el);
+        });
+      }
+
+      if (typeof lucide !== 'undefined') {
+        lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+      }
+    }
+
+    function showMenu(clientX, clientY, item = null) {
+      const oldMenu = document.getElementById('explorer-ctx-menu');
+      if (oldMenu) oldMenu.remove();
+
+      const menu = document.createElement('div');
+      menu.id = 'explorer-ctx-menu';
+      menu.style.cssText = `position:fixed; left:${clientX}px; top:${clientY}px; z-index:9999; background:rgba(15,15,15,0.95); border:1px solid var(--border); border-radius:8px; padding:4px 0; min-width:140px; display:flex; flex-direction:column; box-shadow:0 10px 25px rgba(0,0,0,0.5);`;
+
+      const itemPath = item ? (currentPath === '/' ? '' : currentPath) + '/' + item.name : '';
+
+      if (item) {
+        menu.innerHTML = `
+          <button class="ctx-btn" id="ctx-open" style="padding:6px 12px; text-align:left; font-size:12px; color:var(--t1); display:flex; align-items:center; gap:8px; width:100%;"><i data-lucide="play" style="width:12px; height:12px;"></i>Open</button>
+          <button class="ctx-btn" id="ctx-copy" style="padding:6px 12px; text-align:left; font-size:12px; color:var(--t1); display:flex; align-items:center; gap:8px; width:100%;"><i data-lucide="copy" style="width:12px; height:12px;"></i>Copy</button>
+          <button class="ctx-btn" id="ctx-cut" style="padding:6px 12px; text-align:left; font-size:12px; color:var(--t1); display:flex; align-items:center; gap:8px; width:100%;"><i data-lucide="scissors" style="width:12px; height:12px;"></i>Cut</button>
+          <button class="ctx-btn" id="ctx-rename" style="padding:6px 12px; text-align:left; font-size:12px; color:var(--t1); display:flex; align-items:center; gap:8px; width:100%;"><i data-lucide="pencil" style="width:12px; height:12px;"></i>Rename</button>
+          <hr style="border:none; border-top:1px solid var(--border); margin:4px 0;"/>
+          <button class="ctx-btn" id="ctx-delete" style="padding:6px 12px; text-align:left; font-size:12px; color:#ff5f57; display:flex; align-items:center; gap:8px; width:100%;"><i data-lucide="trash-2" style="width:12px; height:12px;"></i>Delete</button>
+        `;
+        document.body.appendChild(menu);
+
+        menu.querySelector('#ctx-open').addEventListener('click', () => {
+          menu.remove();
+          if (item.type === 'directory') navigateTo(itemPath);
+          else QuantumOS.apps.textEditor.launch(itemPath);
+        });
+        menu.querySelector('#ctx-copy').addEventListener('click', () => {
+          menu.remove();
+          QuantumOS.state.clipboard = { type: 'copy', path: itemPath };
+        });
+        menu.querySelector('#ctx-cut').addEventListener('click', () => {
+          menu.remove();
+          QuantumOS.state.clipboard = { type: 'cut', path: itemPath };
+        });
+        menu.querySelector('#ctx-rename').addEventListener('click', () => {
+          menu.remove();
+          const name = prompt("Rename to:", item.name);
+          if (name && name !== item.name) {
+            QuantumOS.FileSystem.rename(itemPath, name);
+            renderContents();
+            if (currentPath === '/Desktop') QuantumOS.DesktopManager.renderIcons();
+          }
+        });
+        menu.querySelector('#ctx-delete').addEventListener('click', () => {
+          menu.remove();
+          if (currentPath === '/Trash') QuantumOS.FileSystem.delete(itemPath);
+          else QuantumOS.FileSystem.trash(itemPath);
+          renderContents();
+          if (currentPath === '/Desktop') QuantumOS.DesktopManager.renderIcons();
+        });
+      } else {
+        menu.innerHTML = `
+          <button class="ctx-btn" id="ctx-newfolder" style="padding:6px 12px; text-align:left; font-size:12px; color:var(--t1); display:flex; align-items:center; gap:8px; width:100%;"><i data-lucide="folder-plus" style="width:12px; height:12px;"></i>New Folder</button>
+          <button class="ctx-btn" id="ctx-newfile" style="padding:6px 12px; text-align:left; font-size:12px; color:var(--t1); display:flex; align-items:center; gap:8px; width:100%;"><i data-lucide="file-plus" style="width:12px; height:12px;"></i>New File</button>
+          <button class="ctx-btn" id="ctx-paste" style="padding:6px 12px; text-align:left; font-size:12px; color:var(--t1); display:flex; align-items:center; gap:8px; width:100%; opacity:${QuantumOS.state.clipboard ? 1 : 0.4}"><i data-lucide="clipboard" style="width:12px; height:12px;"></i>Paste</button>
+        `;
+        document.body.appendChild(menu);
+
+        menu.querySelector('#ctx-newfolder').addEventListener('click', () => {
+          menu.remove();
+          createFolder();
+        });
+        menu.querySelector('#ctx-newfile').addEventListener('click', () => {
+          menu.remove();
+          createFile();
+        });
+        menu.querySelector('#ctx-paste').addEventListener('click', () => {
+          menu.remove();
+          if (QuantumOS.state.clipboard) {
+            const clip = QuantumOS.state.clipboard;
+            if (clip.type === 'copy') QuantumOS.FileSystem.copy(clip.path, currentPath);
+            else if (clip.type === 'cut') {
+              QuantumOS.FileSystem.move(clip.path, currentPath);
+              QuantumOS.state.clipboard = null;
+            }
+            renderContents();
+            if (currentPath === '/Desktop') QuantumOS.DesktopManager.renderIcons();
+          }
+        });
+      }
+
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+
+      const clear = () => {
+        menu.remove();
+        document.removeEventListener('mousedown', clear);
+      };
+      setTimeout(() => document.addEventListener('mousedown', clear), 50);
+    }
+
+    function createFolder() {
+      let name = 'New Folder', idx = 1;
+      while (QuantumOS.FileSystem.get((currentPath === '/' ? '' : currentPath) + '/' + name)) {
+        name = `New Folder (${idx++})`;
+      }
+      QuantumOS.FileSystem.createFolder(currentPath, name);
+      renderContents();
+      if (currentPath === '/Desktop') QuantumOS.DesktopManager.renderIcons();
+    }
+
+    function createFile() {
+      let name = 'Untitled.txt', idx = 1;
+      while (QuantumOS.FileSystem.get((currentPath === '/' ? '' : currentPath) + '/' + name)) {
+        name = `Untitled (${idx++}).txt`;
+      }
+      QuantumOS.FileSystem.createFile(currentPath, name, '');
+      renderContents();
+      if (currentPath === '/Desktop') QuantumOS.DesktopManager.renderIcons();
+    }
+
+    // Wiring up toolbar and sidebars
+    btnBack.addEventListener('click', () => {
+      if (historyStack.length > 0) {
+        forwardStack.push(currentPath);
+        navigateTo(historyStack.pop(), false);
+      }
+    });
+
+    btnForward.addEventListener('click', () => {
+      if (forwardStack.length > 0) {
+        navigateTo(forwardStack.pop(), true);
+      }
+    });
+
+    btnUp.addEventListener('click', () => {
+      if (currentPath === '/' || currentPath === '') return;
+      const parts = currentPath.split('/').filter(p => p);
+      parts.pop();
+      navigateTo('/' + parts.join('/'));
+    });
+
+    btnRefresh.addEventListener('click', renderContents);
+    btnNewFolder.addEventListener('click', createFolder);
+    btnNewFile.addEventListener('click', createFile);
+
+    btnToggleView.addEventListener('click', () => {
+      viewMode = viewMode === 'grid' ? 'list' : 'grid';
+      btnToggleView.innerHTML = viewMode === 'grid' ? '<i data-lucide="layout-grid" style="width:14px; height:14px;"></i>' : '<i data-lucide="list" style="width:14px; height:14px;"></i>';
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+      renderContents();
+    });
+
+    pathInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const val = pathInput.value.trim();
+        const node = QuantumOS.FileSystem.get(val);
+        if (node && node.type === 'directory') navigateTo(val);
+        else {
+          QuantumOS.NotificationSystem.showToast('Invalid directory');
+          pathInput.value = currentPath;
+        }
+      }
+    });
+
+    searchInput.addEventListener('input', renderContents);
+
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', () => navigateTo(link.getAttribute('data-path')));
+    });
+
+    gridContainer.addEventListener('contextmenu', (e) => {
+      if (e.target === gridContainer || e.target === viewGrid || e.target === viewList) {
+        e.preventDefault();
+        showMenu(e.clientX, e.clientY);
+      }
+    });
+
+    navigateTo(currentPath, false);
+  }
+});
+
+// ==========================================
+// 2. QUANTUM BROWSER APP
+// ==========================================
+AppRegistry.register({
+  id: 'browser',
+  name: 'Quantum Browser',
+  icon: 'globe',
+  category: 'Productivity',
+  defaultWidth: 900,
+  defaultHeight: 600,
+  singleton: false,
+  component: function(container, options) {
+    let tabs = [];
+    let activeTabId = null;
+    let bookmarks = JSON.parse(localStorage.getItem('browser_bookmarks') || '[]');
+    let history = JSON.parse(localStorage.getItem('browser_history') || '[]');
+
+    if (window.LibcurlClient && !window.$scramjetController && window.ScramjetController) {
+      try {
+        const transport = new window.LibcurlClient();
+        window.$scramjetController = new window.ScramjetController({
+          transport: transport,
+          prefix: '/service/',
+        });
+      } catch (e) {
+        console.error("Scramjet initialization failed: ", e);
+      }
+    }
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; height:100%; color:var(--t1); font-family:var(--font-sans); background:var(--bg2);">
+        <div style="display:flex; align-items:center; background:var(--bg3); border-bottom:1px solid var(--border); padding:6px 6px 0; gap:4px; flex-shrink:0;">
+          <div class="tabs-container" style="display:flex; align-items:flex-end; gap:2px; overflow-x:auto; scrollbar-width:none; flex:1;"></div>
+          <button class="btn-new-tab" style="padding:6px; color:var(--t2);"><i data-lucide="plus" style="width:14px; height:14px;"></i></button>
+          <button class="btn-show-bookmarks" style="padding:6px; color:var(--t2);"><i data-lucide="star" style="width:14px; height:14px;"></i></button>
+          <button class="btn-show-history" style="padding:6px; color:var(--t2);"><i data-lucide="history" style="width:14px; height:14px;"></i></button>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--border); background:var(--bg); flex-shrink:0;">
+          <button class="btn-nav-back" style="padding:6px; color:var(--t2);"><i data-lucide="arrow-left" style="width:16px; height:16px;"></i></button>
+          <button class="btn-nav-forward" style="padding:6px; color:var(--t2);"><i data-lucide="arrow-right" style="width:16px; height:16px;"></i></button>
+          <button class="btn-nav-reload" style="padding:6px; color:var(--t2);"><i data-lucide="rotate-cw" style="width:16px; height:16px;"></i></button>
+          <div style="flex:1; display:flex; align-items:center; gap:6px; padding:4px 8px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px;">
+            <i data-lucide="lock" style="width:12px; height:12px; color:var(--t3);"></i>
+            <input type="text" class="browser-url-input" style="flex:1; background:transparent; border:none; font-family:var(--font-mono); font-size:12px; outline:none; color:inherit;" />
+            <button class="btn-add-bookmark"><i data-lucide="star" style="width:14px; height:14px;"></i></button>
+          </div>
+          <button class="btn-go" style="padding:6px 12px; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:6px; font-size:12px; color:inherit;">Go</button>
+        </div>
+        <div class="browser-views-container" style="flex:1; overflow:hidden; position:relative; background:#fff;"></div>
+        <div class="browser-sidebar-overlay" style="display:none; position:absolute; top:86px; right:0; bottom:0; width:220px; background:var(--bg3); border-left:1px solid var(--border); z-index:100; flex-direction:column; padding:12px; gap:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:6px;">
+            <strong class="sidebar-title" style="font-size:12px; text-transform:uppercase; color:var(--t2);">Bookmarks</strong>
+            <button class="btn-close-sidebar" style="color:var(--t3);"><i data-lucide="x" style="width:14px; height:14px;"></i></button>
+          </div>
+          <div class="sidebar-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:4px; font-size:11px;"></div>
+        </div>
+      </div>
+    `;
+
+    const tabsContainer = container.querySelector('.tabs-container');
+    const btnNewTab = container.querySelector('.btn-new-tab');
+    const btnShowBookmarks = container.querySelector('.btn-show-bookmarks');
+    const btnShowHistory = container.querySelector('.btn-show-history');
+    const btnNavBack = container.querySelector('.btn-nav-back');
+    const btnNavForward = container.querySelector('.btn-nav-forward');
+    const btnNavReload = container.querySelector('.btn-nav-reload');
+    const urlInput = container.querySelector('.browser-url-input');
+    const btnAddBookmark = container.querySelector('.btn-add-bookmark');
+    const btnGo = container.querySelector('.btn-go');
+    const viewsContainer = container.querySelector('.browser-views-container');
+    const sidebarOverlay = container.querySelector('.browser-sidebar-overlay');
+    const sidebarTitle = container.querySelector('.sidebar-title');
+    const sidebarList = container.querySelector('.sidebar-list');
+    const btnCloseSidebar = container.querySelector('.btn-close-sidebar');
+
+    function createTab(url = 'https://wikipedia.org') {
+      const tabId = 'tab_' + Math.random().toString(36).substr(2, 9);
+      const tab = { id: tabId, url: url, title: 'Loading...', history: [url], historyIndex: 0 };
+      tabs.push(tab);
+
+      const iframe = document.createElement('iframe');
+      iframe.id = `iframe_${tabId}`;
+      iframe.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; border:none; display:none; background:#fff;';
+
+      let finalUrl = url;
+      if (window.$scramjetController) {
+        try {
+          finalUrl = window.$scramjetController.encodeUrl(url);
+        } catch (e) {}
+      }
+      iframe.src = finalUrl;
+      viewsContainer.appendChild(iframe);
+
+      addHistory(url);
+
+      iframe.addEventListener('load', () => {
+        try {
+          const docTitle = iframe.contentDocument ? iframe.contentDocument.title : '';
+          tab.title = docTitle || getDomain(tab.url);
+        } catch (e) {
+          tab.title = getDomain(tab.url);
+        }
+        renderTabs();
+      });
+
+      switchTab(tabId);
+    }
+
+    function addHistory(url) {
+      if (history.includes(url)) history = history.filter(u => u !== url);
+      history.unshift(url);
+      if (history.length > 50) history.pop();
+      localStorage.setItem('browser_history', JSON.stringify(history));
+    }
+
+    function getDomain(url) {
+      try { return new URL(url).hostname; } catch (e) { return url; }
+    }
+
+    function renderTabs() {
+      tabsContainer.innerHTML = '';
+      tabs.forEach(tab => {
+        const active = tab.id === activeTabId;
+        const el = document.createElement('div');
+        el.style.cssText = `display:flex; align-items:center; gap:6px; padding:6px 12px 4px; border-radius:8px 8px 0 0; background:${active ? 'var(--bg2)' : 'rgba(255,255,255,0.02)'}; border:1px solid ${active ? 'var(--border)' : 'transparent'}; border-bottom:none; max-width:140px; cursor:pointer; font-size:11px; flex-shrink:0;`;
+        el.innerHTML = `
+          <i data-lucide="globe" style="width:12px; height:12px; color:${active ? 'var(--t1)' : 'var(--t3)'};"></i>
+          <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:${active ? 'var(--t1)' : 'var(--t2)'};">${tab.title || 'Loading...'}</span>
+          <button class="close-tab" style="color:var(--t3);"><i data-lucide="x" style="width:10px; height:10px;"></i></button>
+        `;
+
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('.close-tab')) {
+            e.stopPropagation();
+            closeTab(tab.id);
+          } else switchTab(tab.id);
+        });
+        tabsContainer.appendChild(el);
+      });
+
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+    }
+
+    function switchTab(tabId) {
+      activeTabId = tabId;
+      tabs.forEach(tab => {
+        const iframe = container.querySelector(`#iframe_${tab.id}`);
+        if (iframe) {
+          if (tab.id === tabId) {
+            iframe.style.display = 'block';
+            urlInput.value = tab.url;
+            updateBookmarkButton(tab.url);
+          } else iframe.style.display = 'none';
+        }
+      });
+      renderTabs();
+    }
+
+    function closeTab(tabId) {
+      tabs = tabs.filter(t => t.id !== tabId);
+      const iframe = container.querySelector(`#iframe_${tabId}`);
+      if (iframe) iframe.remove();
+
+      if (tabs.length === 0) createTab();
+      else {
+        if (activeTabId === tabId) switchTab(tabs[tabs.length - 1].id);
+        else renderTabs();
+      }
+    }
+
+    function navigateActiveTab(url) {
+      const activeTab = tabs.find(t => t.id === activeTabId);
+      if (!activeTab) return;
+
+      let parsed = url.trim();
+      if (!parsed.startsWith('http://') && !parsed.startsWith('https://')) {
+        if (parsed.includes('.') && !parsed.includes(' ')) parsed = 'https://' + parsed;
+        else parsed = 'https://google.com/search?q=' + encodeURIComponent(parsed);
+      }
+
+      activeTab.url = parsed;
+      urlInput.value = parsed;
+      addHistory(parsed);
+      updateBookmarkButton(parsed);
+
+      const iframe = container.querySelector(`#iframe_${activeTabId}`);
+      if (iframe) {
+        let finalUrl = parsed;
+        if (window.$scramjetController) {
+          try { finalUrl = window.$scramjetController.encodeUrl(parsed); } catch (e) {}
+        }
+        iframe.src = finalUrl;
+      }
+
+      activeTab.history = activeTab.history.slice(0, activeTab.historyIndex + 1);
+      activeTab.history.push(parsed);
+      activeTab.historyIndex = activeTab.history.length - 1;
+    }
+
+    function updateBookmarkButton(url) {
+      btnAddBookmark.style.color = bookmarks.includes(url) ? '#febc2e' : 'var(--t3)';
+    }
+
+    btnGo.addEventListener('click', () => navigateActiveTab(urlInput.value));
+    urlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') navigateActiveTab(urlInput.value);
+    });
+
+    btnNewTab.addEventListener('click', () => createTab());
+
+    btnAddBookmark.addEventListener('click', () => {
+      const url = urlInput.value.trim();
+      if (!url) return;
+      if (bookmarks.includes(url)) {
+        bookmarks = bookmarks.filter(b => b !== url);
+        QuantumOS.NotificationSystem.showToast('Bookmark removed');
+      } else {
+        bookmarks.push(url);
+        QuantumOS.NotificationSystem.showToast('Bookmark added');
+      }
+      localStorage.setItem('browser_bookmarks', JSON.stringify(bookmarks));
+      updateBookmarkButton(url);
+    });
+
+    btnNavBack.addEventListener('click', () => {
+      const tab = tabs.find(t => t.id === activeTabId);
+      if (tab && tab.historyIndex > 0) {
+        tab.historyIndex--;
+        tab.url = tab.history[tab.historyIndex];
+        urlInput.value = tab.url;
+        const iframe = container.querySelector(`#iframe_${activeTabId}`);
+        if (iframe) {
+          let final = tab.url;
+          if (window.$scramjetController) final = window.$scramjetController.encodeUrl(tab.url);
+          iframe.src = final;
+        }
+      }
+    });
+
+    btnNavForward.addEventListener('click', () => {
+      const tab = tabs.find(t => t.id === activeTabId);
+      if (tab && tab.historyIndex < tab.history.length - 1) {
+        tab.historyIndex++;
+        tab.url = tab.history[tab.historyIndex];
+        urlInput.value = tab.url;
+        const iframe = container.querySelector(`#iframe_${activeTabId}`);
+        if (iframe) {
+          let final = tab.url;
+          if (window.$scramjetController) final = window.$scramjetController.encodeUrl(tab.url);
+          iframe.src = final;
+        }
+      }
+    });
+
+    btnNavReload.addEventListener('click', () => {
+      const iframe = container.querySelector(`#iframe_${activeTabId}`);
+      if (iframe) {
+        const src = iframe.src;
+        iframe.src = 'about:blank';
+        setTimeout(() => iframe.src = src, 50);
+      }
+    });
+
+    function toggleSidebar(type) {
+      const isVisible = sidebarOverlay.style.display === 'flex';
+      const isSameType = sidebarTitle.innerText === type;
+      if (isVisible && isSameType) sidebarOverlay.style.display = 'none';
+      else {
+        sidebarOverlay.style.display = 'flex';
+        sidebarTitle.innerText = type;
+        renderSidebarList(type);
+      }
+    }
+
+    function renderSidebarList(type) {
+      sidebarList.innerHTML = '';
+      const list = type === 'Bookmarks' ? bookmarks : history;
+      if (list.length === 0) {
+        sidebarList.innerHTML = `<div style="color:var(--t3); padding:8px;">No records</div>`;
+        return;
+      }
+
+      list.forEach(url => {
+        const el = document.createElement('div');
+        el.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:6px; border-radius:6px; cursor:pointer; background:rgba(255,255,255,0.01); transition:background 0.2s; color:var(--t2);';
+        el.innerHTML = `
+          <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${getDomain(url)}</span>
+          <button class="delete-url-item" style="color:var(--t3);"><i data-lucide="trash-2" style="width:12px; height:12px;"></i></button>
+        `;
+
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('.delete-url-item')) {
+            e.stopPropagation();
+            if (type === 'Bookmarks') {
+              bookmarks = bookmarks.filter(b => b !== url);
+              localStorage.setItem('browser_bookmarks', JSON.stringify(bookmarks));
+            } else {
+              history = history.filter(h => h !== url);
+              localStorage.setItem('browser_history', JSON.stringify(history));
+            }
+            renderSidebarList(type);
+          } else {
+            navigateActiveTab(url);
+            sidebarOverlay.style.display = 'none';
+          }
+        });
+        sidebarList.appendChild(el);
+      });
+
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+    }
+
+    btnShowBookmarks.addEventListener('click', () => toggleSidebar('Bookmarks'));
+    btnShowHistory.addEventListener('click', () => toggleSidebar('History'));
+    btnCloseSidebar.addEventListener('click', () => sidebarOverlay.style.display = 'none');
+
+    createTab(options.url || 'https://wikipedia.org');
+  }
+});
+
+// ==========================================
+// 3. AI CHAT APP
+// ==========================================
+AppRegistry.register({
+  id: 'aiChat',
+  name: 'Quantum AI',
+  icon: 'bot',
+  category: 'Utility',
+  defaultWidth: 850,
+  defaultHeight: 550,
+  singleton: true,
+  component: function(container, options) {
+    let conversations = JSON.parse(localStorage.getItem('ai_conversations') || '[]');
+    let currentConversationId = null;
+    let selectedModel = QuantumOS.SettingsEngine.get('ai.openRouterModel') || 'meta-llama/llama-3-8b-instruct';
+    let currentPastedImage = null;
+
+    if (conversations.length === 0) createNewConversation();
+    else currentConversationId = conversations[0].id;
+
+    container.innerHTML = `
+      <div style="display:flex; height:100%; color:var(--t1); font-family:var(--font-sans); background:var(--bg2);">
+        <aside style="width:200px; border-right:1px solid var(--border); background:var(--bg); display:flex; flex-direction:column; padding:12px; gap:12px; flex-shrink:0;">
+          <button class="btn-new-chat" style="width:100%; padding:8px 12px; border:1px solid var(--border); background:rgba(255,255,255,0.04); border-radius:8px; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:600; font-size:12px; color:inherit;"><i data-lucide="plus" style="width:14px; height:14px;"></i>New Chat</button>
+          <div style="font-size:10px; text-transform:uppercase; color:var(--t3); font-weight:700;">Conversations</div>
+          <div class="conversations-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:4px;"></div>
+        </aside>
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); background:var(--bg3);">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="cpu" style="width:16px; height:16px; color:var(--accent);"></i>
+              <select class="model-select" style="background:transparent; border:none; font-size:12px; font-weight:600; color:inherit; cursor:pointer;">
+                <option value="meta-llama/llama-3.1-8b-instruct" style="background:var(--bg3);">Llama 3.1 8B</option>
+                <option value="meta-llama/llama-3-8b-instruct" style="background:var(--bg3);">Llama 3 8B</option>
+                <option value="mistralai/mistral-7b-instruct" style="background:var(--bg3);">Mistral 7B</option>
+                <option value="mistralai/mixtral-8x7b-instruct" style="background:var(--bg3);">Mixtral 8x7B</option>
+                <option value="google/gemma-7b-it" style="background:var(--bg3);">Gemma 7B</option>
+                <option value="google/gemma-2-9b-it" style="background:var(--bg3);">Gemma 2 9B</option>
+                <option value="openai/gpt-3.5-turbo" style="background:var(--bg3);">GPT-3.5 Turbo</option>
+                <option value="openai/gpt-4o-mini" style="background:var(--bg3);">GPT-4o Mini</option>
+              </select>
+            </div>
+            <div style="font-size:11px; color:var(--t3);">OpenRouter Streaming</div>
+          </div>
+          <div class="chat-messages-scroll" style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px;"></div>
+          <div class="image-preview-bar" style="display:none; align-items:center; gap:12px; padding:8px 16px; background:rgba(255,255,255,0.02); border-top:1px solid var(--border);">
+            <img class="img-preview" src="" style="height:44px; border-radius:6px; border:1px solid var(--border);" />
+            <span style="font-size:11px; color:var(--t2);">Selected Image</span>
+            <button class="btn-clear-image" style="color:var(--t3); margin-left:auto;"><i data-lucide="x" style="width:16px; height:16px;"></i></button>
+          </div>
+          <div style="padding:12px 16px; border-top:1px solid var(--border); background:var(--bg); display:flex; align-items:flex-end; gap:8px;">
+            <textarea class="chat-textarea" placeholder="Type message, paste image..." style="flex:1; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:12px; padding:8px 12px; resize:none; font-family:inherit; font-size:13px; min-height:36px; max-height:100px; outline:none; color:inherit; line-height:1.4;"></textarea>
+            <button class="btn-send" style="width:38px; height:38px; border-radius:10px; background:#fff; color:#000; display:flex; align-items:center; justify-content:center; cursor:pointer;"><i data-lucide="send" style="width:16px; height:16px;"></i></button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const conversationsList = container.querySelector('.conversations-list');
+    const btnNewChat = container.querySelector('.btn-new-chat');
+    const modelSelect = container.querySelector('.model-select');
+    const messagesContainer = container.querySelector('.chat-messages-scroll');
+    const imagePreviewBar = container.querySelector('.image-preview-bar');
+    const imgPreview = container.querySelector('.img-preview');
+    const btnClearImage = container.querySelector('.btn-clear-image');
+    const textarea = container.querySelector('.chat-textarea');
+    const btnSend = container.querySelector('.btn-send');
+
+    function createNewConversation() {
+      const id = 'conv_' + Math.random().toString(36).substr(2, 9);
+      const newConv = {
+        id: id,
+        title: 'New Conversation',
+        messages: [{ role: 'assistant', content: 'Hello! I am Quantum AI. How can I help you today?' }]
+      };
+      conversations.unshift(newConv);
+      localStorage.setItem('ai_conversations', JSON.stringify(conversations));
+      currentConversationId = id;
+      renderConversations();
+      renderMessages();
+    }
+
+    function renderConversations() {
+      conversationsList.innerHTML = '';
+      conversations.forEach(c => {
+        const active = c.id === currentConversationId;
+        const item = document.createElement('div');
+        item.style.cssText = `display:flex; justify-content:space-between; align-items:center; padding:8px; border-radius:6px; cursor:pointer; background:${active ? 'rgba(255,255,255,0.06)' : 'transparent'}; font-size:12px;`;
+        item.innerHTML = `
+          <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:8px; color:${active ? 'var(--t1)' : 'var(--t2)'};">
+            <i data-lucide="message-square" style="width:14px; height:14px; flex-shrink:0;"></i>
+            <span>${c.title}</span>
+          </div>
+          <button class="delete-chat" style="color:var(--t3);"><i data-lucide="trash-2" style="width:12px; height:12px;"></i></button>
+        `;
+
+        item.querySelector('.delete-chat').addEventListener('click', (e) => {
+          e.stopPropagation();
+          conversations = conversations.filter(conv => conv.id !== c.id);
+          localStorage.setItem('ai_conversations', JSON.stringify(conversations));
+          if (conversations.length === 0) createNewConversation();
+          else {
+            if (currentConversationId === c.id) currentConversationId = conversations[0].id;
+            renderConversations();
+            renderMessages();
+          }
+        });
+
+        item.addEventListener('click', () => {
+          currentConversationId = c.id;
+          renderConversations();
+          renderMessages();
+        });
+
+        conversationsList.appendChild(item);
+      });
+
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+    }
+
+    function markdown(text) {
+      let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      html = html.replace(/```([\s\S]*?)```/g, (m, c) => `<pre style="background:#000; padding:10px; border:1px solid var(--border); border-radius:6px; overflow-x:auto; font-family:var(--font-mono); font-size:11px; margin:6px 0; color:#fff;"><code>${c.trim()}</code></pre>`);
+      html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.06); padding:2px 4px; border-radius:4px; font-family:var(--font-mono); font-size:11px;">$1</code>');
+      html = html.replace(/\*\*([^*]+)\*\?/g, '<strong>$1</strong>');
+      return html;
+    }
+
+    function renderMessages() {
+      messagesContainer.innerHTML = '';
+      const active = conversations.find(c => c.id === currentConversationId);
+      if (!active) return;
+
+      active.messages.forEach(msg => {
+        const bubble = document.createElement('div');
+        const isUser = msg.role === 'user';
+        bubble.style.cssText = `max-width:80%; padding:10px 14px; border-radius:12px; font-size:13px; line-height:1.5; word-wrap:break-word; align-self:${isUser ? 'flex-end' : 'flex-start'}; background:${isUser ? 'var(--t1)' : 'var(--glass-bg)'}; border:1px solid ${isUser ? 'var(--t1)' : 'var(--glass-border)'}; color:${isUser ? '#000' : 'var(--t1)'}; display:flex; flex-direction:column; gap:6px;`;
+
+        if (msg.image) {
+          bubble.innerHTML += `<img src="${msg.image}" style="max-width:200px; border-radius:6px;" />`;
+        }
+
+        const div = document.createElement('div');
+        div.innerHTML = markdown(msg.content);
+        bubble.appendChild(div);
+
+        messagesContainer.appendChild(bubble);
+      });
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = textarea.value.trim();
+      if (!text && !currentPastedImage) return;
+
+      const active = conversations.find(c => c.id === currentConversationId);
+      if (!active) return;
+
+      const userMsg = { role: 'user', content: text };
+      if (currentPastedImage) {
+        userMsg.image = currentPastedImage;
+        currentPastedImage = null;
+        imagePreviewBar.style.display = 'none';
+      }
+      active.messages.push(userMsg);
+
+      if (active.title === 'New Conversation') {
+        active.title = text.substr(0, 15) + (text.length > 15 ? '...' : '');
+        renderConversations();
+      }
+
+      textarea.value = '';
+      renderMessages();
+
+      const thinking = document.createElement('div');
+      thinking.style.cssText = 'align-self:flex-start; display:flex; align-items:center; gap:6px; padding:10px 14px; border-radius:12px; background:var(--glass-bg); border:1px solid var(--glass-border); font-size:12px; color:var(--t3);';
+      thinking.innerHTML = `<i data-lucide="loader-2" style="width:14px; height:14px; animation:spin 1s linear infinite;"></i>Thinking...`;
+      messagesContainer.appendChild(thinking);
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      const key = QuantumOS.SettingsEngine.get('ai.openRouterKey') || '';
+      if (key) {
+        try {
+          const payload = active.messages.map(m => {
+            if (m.image) return { role: m.role, content: [{ type: 'text', text: m.content }, { type: 'image_url', image_url: { url: m.image } }] };
+            return { role: m.role, content: m.content };
+          });
+
+          const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: selectedModel, messages: payload, stream: true })
+          });
+
+          thinking.remove();
+
+          const bubble = document.createElement('div');
+          bubble.style.cssText = 'max-width:80%; padding:10px 14px; border-radius:12px; font-size:13px; line-height:1.5; word-wrap:break-word; align-self:flex-start; background:var(--glass-bg); border:1px solid var(--glass-border); color:var(--t1);';
+          messagesContainer.appendChild(bubble);
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let full = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunks = decoder.decode(value).split('\n');
+            for (const chunk of chunks) {
+              if (chunk.includes('[DONE]')) continue;
+              if (chunk.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(chunk.slice(6));
+                  full += data.choices[0]?.delta?.content || '';
+                  bubble.innerHTML = markdown(full);
+                  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                } catch (e) {}
+              }
+            }
+          }
+
+          active.messages.push({ role: 'assistant', content: full });
+          localStorage.setItem('ai_conversations', JSON.stringify(conversations));
+        } catch (e) {
+          thinking.remove();
+          mockReply("Error connecting to OpenRouter. Please try again.");
+        }
+      } else {
+        setTimeout(() => {
+          thinking.remove();
+          mockReply("OpenRouter key not detected. Set key in System settings under AI.");
+        }, 1000);
+      }
+    }
+
+    function mockReply(reply) {
+      const active = conversations.find(c => c.id === currentConversationId);
+      if (active) {
+        active.messages.push({ role: 'assistant', content: reply });
+        localStorage.setItem('ai_conversations', JSON.stringify(conversations));
+      }
+      renderMessages();
+    }
+
+    btnSend.addEventListener('click', sendMessage);
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    modelSelect.value = selectedModel;
+    modelSelect.addEventListener('change', (e) => {
+      selectedModel = e.target.value;
+      QuantumOS.SettingsEngine.set('ai.openRouterModel', selectedModel);
+    });
+    btnNewChat.addEventListener('click', createNewConversation);
+
+    textarea.addEventListener('paste', (e) => {
+      const items = e.clipboardData.items;
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const blob = item.getAsFile();
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            currentPastedImage = ev.target.result;
+            imgPreview.src = currentPastedImage;
+            imagePreviewBar.style.display = 'flex';
+          };
+          reader.readAsDataURL(blob);
+          e.preventDefault();
+        }
+      }
+    });
+
+    btnClearImage.addEventListener('click', () => {
+      currentPastedImage = null;
+      imagePreviewBar.style.display = 'none';
+    });
+
+    renderConversations();
+    renderMessages();
+  }
+});
+
+// ==========================================
+// 4. CLOUD GAMING HUB
+// ==========================================
+AppRegistry.register({
+  id: 'cloudGaming',
+  name: 'Cloud Gaming Hub',
+  icon: 'gamepad-2',
+  category: 'Entertainment',
+  defaultWidth: 950,
+  defaultHeight: 650,
+  singleton: false,
+  component: function(container, options) {
+    let activeCat = 'All';
+    let searchQuery = '';
+    let favorites = JSON.parse(localStorage.getItem('game_favorites') || '[]');
+
+    const games = window.games || [
+      { name: 'Doom Classic', url: 'https://stunning-quokka-4284d0.netlify.app/semag/doom/index.html' },
+      { name: 'Friday Night Funkin', url: 'https://stunning-quokka-4284d0.netlify.app/semag/fridaynightfunkin/index.html' },
+      { name: 'Minecraft Classic', url: 'https://ghgames.netlify.app/games(blckt)/mc2.html' },
+      { name: 'Retro Bowl', url: 'https://ghgames.netlify.app/games(blckt)/retro.html' }
+    ];
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; height:100%; color:var(--t1); font-family:var(--font-sans); background:var(--bg); overflow:hidden;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--border); background:var(--bg2); flex-shrink:0;">
+          <h2 style="font-family:var(--font-display); font-size:18px; font-weight:700;">Cloud Arcade</h2>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 12px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; width:260px;">
+            <i data-lucide="search" style="width:14px; height:14px; color:var(--t3);"></i>
+            <input type="text" class="game-search" placeholder="Search titles..." style="flex:1; background:transparent; border:none; font-size:12px; outline:none; color:inherit;" />
+          </div>
+        </div>
+        <div style="flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:20px;">
+          <div style="border-radius:12px; background:linear-gradient(135deg, rgba(255,255,255,0.1), rgba(0,0,0,0.8)), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=600'); background-size:cover; background-position:center; height:180px; padding:20px; display:flex; flex-direction:column; justify-content:end; gap:8px; border:1px solid var(--border);">
+            <div style="font-size:10px; text-transform:uppercase; background:#fff; color:#000; padding:2px 6px; border-radius:4px; width:max-content; font-weight:700;">Featured Title</div>
+            <h1 style="font-size:22px; font-weight:800;">Doom Classic</h1>
+            <div style="display:flex; gap:10px; margin-top:8px;">
+              <button class="btn-play-hero-direct" style="padding:6px 14px; background:#fff; color:#000; font-weight:600; font-size:12px; border-radius:6px;">Play Direct</button>
+              <button class="btn-play-hero-proxy" style="padding:6px 14px; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); font-weight:600; font-size:12px; border-radius:6px; color:#fff;">Play Proxied</button>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="pill-btn active" data-cat="All" style="padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:rgba(255,255,255,0.03); font-size:11px; cursor:pointer; color:inherit;">All Games</button>
+            <button class="pill-btn" data-cat="Favorites" style="padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:transparent; font-size:11px; cursor:pointer; color:inherit;">Favorites</button>
+          </div>
+          <div class="game-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:16px;"></div>
+        </div>
+      </div>
+    `;
+
+    const searchInput = container.querySelector('.game-search');
+    const heroDirect = container.querySelector('.btn-play-hero-direct');
+    const heroProxy = container.querySelector('.btn-play-hero-proxy');
+    const pills = container.querySelectorAll('.pill-btn');
+    const grid = container.querySelector('.game-grid');
+
+    function render() {
+      grid.innerHTML = '';
+      let list = games.filter(g => g.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      if (activeCat === 'Favorites') list = list.filter(g => favorites.includes(g.name));
+
+      if (list.length === 0) {
+        grid.innerHTML = `<div style="color:var(--t3); font-size:12px;">No titles found</div>`;
+        return;
+      }
+
+      list.forEach(game => {
+        const isFav = favorites.includes(game.name);
+        const tile = document.createElement('div');
+        tile.style.cssText = 'background:var(--bg2); border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; position:relative;';
+
+        tile.innerHTML = `
+          <div style="height:100px; background:#222; display:flex; align-items:center; justify-content:center; position:relative;">
+            <i data-lucide="gamepad-2" style="width:28px; height:28px; color:var(--t3);"></i>
+            <button class="fav-btn" style="position:absolute; top:8px; right:8px; color:${isFav ? '#febc2e' : 'var(--t3)'};"><i data-lucide="star" style="width:14px; height:14px;"></i></button>
+          </div>
+          <div style="padding:12px; display:flex; flex-direction:column; gap:8px;">
+            <strong style="font-size:12px; color:var(--t1); white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${game.name}</strong>
+            <div style="display:flex; gap:6px;">
+              <button class="play-direct" style="flex:1; padding:6px 0; background:#fff; color:#000; font-size:10px; font-weight:700; border-radius:4px;">Direct</button>
+              <button class="play-proxy" style="flex:1; padding:6px 0; background:rgba(255,255,255,0.06); border:1px solid var(--border); font-size:10px; font-weight:700; border-radius:4px; color:inherit;">Proxy</button>
+            </div>
+          </div>
+        `;
+
+        tile.querySelector('.fav-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (favorites.includes(game.name)) favorites = favorites.filter(f => f !== game.name);
+          else favorites.push(game.name);
+          localStorage.setItem('game_favorites', JSON.stringify(favorites));
+          render();
+        });
+
+        tile.querySelector('.play-direct').addEventListener('click', () => launchGame(game.name, game.url, false));
+        tile.querySelector('.play-proxy').addEventListener('click', () => launchGame(game.name, game.url, true));
+
+        grid.appendChild(tile);
+      });
+
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+    }
+
+    function launchGame(name, url, proxy = false) {
+      let finalUrl = url;
+      if (proxy && window.$scramjetController) {
+        try { finalUrl = window.$scramjetController.encodeUrl(url); } catch (e) {}
+      }
+      QuantumOS.WindowManager.createWindow({
+        title: `Game: ${name}`,
+        icon: 'gamepad-2',
+        w: 900,
+        h: 600,
+        content: `<iframe src="${finalUrl}" style="width:100%; height:100%; border:none; background:#000;"></iframe>`
+      });
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      render();
+    });
+
+    pills.forEach(p => {
+      p.addEventListener('click', () => {
+        pills.forEach(btn => btn.style.background = 'transparent');
+        p.style.background = 'rgba(255,255,255,0.06)';
+        activeCat = p.getAttribute('data-cat');
+        render();
+      });
+    });
+
+    heroDirect.addEventListener('click', () => launchGame('Doom Classic', games[0].url, false));
+    heroProxy.addEventListener('click', () => launchGame('Doom Classic', games[0].url, true));
+
+    render();
+  }
+});
+
+// ==========================================
+// 5. SETTINGS APP
+// ==========================================
+AppRegistry.register({
+  id: 'settings',
+  name: 'Settings',
+  icon: 'settings',
+  category: 'System',
+  defaultWidth: 850,
+  defaultHeight: 600,
+  singleton: true,
+  component: function(container, options) {
+    let currentCat = options.category || 'appearance';
+
+    container.innerHTML = `
+      <div style="display:flex; height:100%; color:var(--t1); font-family:var(--font-sans); background:var(--bg2);">
+        <aside style="width:200px; border-right:1px solid var(--border); background:var(--bg); padding:12px; display:flex; flex-direction:column; gap:4px; overflow-y:auto; flex-shrink:0;">
+          <div style="font-size:10px; text-transform:uppercase; color:var(--t3); font-weight:700; margin-bottom:8px; padding:0 8px;">Settings</div>
+          <ul style="display:flex; flex-direction:column; gap:2px; font-size:12px; list-style:none;">
+            <li class="set-link" data-cat="appearance" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="palette" style="width:14px;"></i>Appearance</li>
+            <li class="set-link" data-cat="desktop" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="monitor" style="width:14px;"></i>Desktop</li>
+            <li class="set-link" data-cat="dock" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="square-play" style="width:14px;"></i>Dock & Taskbar</li>
+            <li class="set-link" data-cat="windowManager" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="columns-4" style="width:14px;"></i>Window Manager</li>
+            <li class="set-link" data-cat="accessibility" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="accessibility" style="width:14px;"></i>Accessibility</li>
+            <li class="set-link" data-cat="performance" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="cpu" style="width:14px;"></i>Performance</li>
+            <li class="set-link" data-cat="notifications" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="bell" style="width:14px;"></i>Notifications</li>
+            <li class="set-link" data-cat="privacy" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="shield" style="width:14px;"></i>Privacy</li>
+            <li class="set-link" data-cat="sound" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="volume-2" style="width:14px;"></i>Sound</li>
+            <li class="set-link" data-cat="input" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="keyboard" style="width:14px;"></i>Input</li>
+            <li class="set-link" data-cat="search" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="search" style="width:14px;"></i>Search</li>
+            <li class="set-link" data-cat="ai" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="bot" style="width:14px;"></i>AI Settings</li>
+            <li class="set-link" data-cat="experimental" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="flask-conical" style="width:14px;"></i>Experimental</li>
+            <li class="set-link" data-cat="about" style="padding:6px 8px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:8px;"><i data-lucide="info" style="width:14px;"></i>About</li>
+          </ul>
+        </aside>
+        <main class="settings-panel-body" style="flex:1; padding:24px; overflow-y:auto; display:flex; flex-direction:column; gap:20px;"></main>
+      </div>
+    `;
+
+    const menuLinks = container.querySelectorAll('.set-link');
+    const panelBody = container.querySelector('.settings-panel-body');
+
+    function switchCat(cat) {
+      currentCat = cat;
+      menuLinks.forEach(link => {
+        const linkCat = link.getAttribute('data-cat');
+        link.style.background = linkCat === currentCat ? 'rgba(255,255,255,0.06)' : 'transparent';
+      });
+      render();
+    }
+
+    function createRow(label, desc, control) {
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border);">
+          <div>
+            <div style="font-size:13px; font-weight:600; color:var(--t1);">${label}</div>
+            <div style="font-size:11px; color:var(--t3);">${desc}</div>
+          </div>
+          <div>${control}</div>
+        </div>
+      `;
+    }
+
+    function render() {
+      panelBody.innerHTML = '';
+      const header = document.createElement('h3');
+      header.style.cssText = 'font-size:18px; font-weight:700; margin-bottom:12px; font-family:var(--font-display);';
+      const content = document.createElement('div');
+      content.style.display = 'flex';
+      content.style.flexDirection = 'column';
+
+      if (currentCat === 'appearance') {
+        header.innerText = 'Appearance';
+        const currentTheme = QuantumOS.ThemeEngine.current;
+        const font = QuantumOS.SettingsEngine.get('appearance.fontFamily') || 'Inter';
+        const size = QuantumOS.SettingsEngine.get('appearance.fontSize') || 13;
+
+        content.innerHTML = `
+          ${createRow('System Theme', 'Set standard theme profile overrides', `
+            <select id="theme-sel" style="padding:6px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:inherit; font-size:12px; outline:none;">
+              ${QuantumOS.ThemeEngine.themes.map(t => `<option value="${t}" ${currentTheme === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+          `)}
+          ${createRow('Font Family', 'System typography token overrides', `
+            <select id="font-sel" style="padding:6px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:inherit; font-size:12px; outline:none;">
+              <option value="Inter" ${font === 'Inter' ? 'selected' : ''}>Inter</option>
+              <option value="JetBrains Mono" ${font === 'JetBrains Mono' ? 'selected' : ''}>JetBrains Mono</option>
+            </select>
+          `)}
+          ${createRow('Font Size', 'Configure global text sizes', `
+            <input type="range" id="size-slider" min="11" max="18" value="${size}" />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#theme-sel').addEventListener('change', (e) => {
+          QuantumOS.ThemeEngine.apply(e.target.value);
+        });
+        content.querySelector('#font-sel').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('appearance.fontFamily', e.target.value);
+          document.body.style.fontFamily = e.target.value === 'JetBrains Mono' ? 'var(--font-mono)' : 'var(--font-sans)';
+        });
+        content.querySelector('#size-slider').addEventListener('input', (e) => {
+          QuantumOS.SettingsEngine.set('appearance.fontSize', parseInt(e.target.value));
+          document.documentElement.style.fontSize = `${e.target.value}px`;
+        });
+      } else if (currentCat === 'desktop') {
+        header.innerText = 'Desktop Settings';
+        const showIcons = QuantumOS.SettingsEngine.get('desktop.showIcons') !== false;
+        const wp = QuantumOS.SettingsEngine.get('desktop.wallpaper') || 'gradient';
+
+        content.innerHTML = `
+          ${createRow('Show Desktop Icons', 'Toggle app files shortcuts render overrides', `
+            <input type="checkbox" id="icons-chk" ${showIcons ? 'checked' : ''} />
+          `)}
+          ${createRow('Wallpaper pattern', 'Select base pattern layer type', `
+            <select id="wp-sel" style="padding:6px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:inherit; font-size:12px; outline:none;">
+              <option value="gradient" ${wp === 'gradient' ? 'selected' : ''}>Gradient</option>
+              <option value="grid" ${wp === 'grid' ? 'selected' : ''}>Developer Grid</option>
+              <option value="dots" ${wp === 'dots' ? 'selected' : ''}>Dots</option>
+              <option value="none" ${wp === 'none' ? 'selected' : ''}>Black (AMOLED)</option>
+            </select>
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#icons-chk').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('desktop.showIcons', e.target.checked);
+          const el = document.getElementById('desktop-icons');
+          if (el) el.style.display = e.target.checked ? 'grid' : 'none';
+        });
+        content.querySelector('#wp-sel').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('desktop.wallpaper', e.target.value);
+          const wall = document.getElementById('wallpaper');
+          if (wall) wall.className = 'wallpaper-container wp-' + e.target.value;
+        });
+      } else if (currentCat === 'dock') {
+        header.innerText = 'Dock & Taskbar';
+        const pos = QuantumOS.SettingsEngine.get('dock.position') || 'bottom';
+        const size = QuantumOS.SettingsEngine.get('dock.size') || 50;
+
+        content.innerHTML = `
+          ${createRow('Dock Position', 'Position of dock shortcuts strip', `
+            <select id="pos-sel" style="padding:6px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:inherit; font-size:12px; outline:none;">
+              <option value="bottom" ${pos === 'bottom' ? 'selected' : ''}>Bottom</option>
+              <option value="left" ${pos === 'left' ? 'selected' : ''}>Left</option>
+              <option value="right" ${pos === 'right' ? 'selected' : ''}>Right</option>
+            </select>
+          `)}
+          ${createRow('Dock Icon Size', 'Icon magnification values', `
+            <input type="range" id="dock-size" min="36" max="64" value="${size}" />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#pos-sel').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('dock.position', e.target.value);
+          const d = document.getElementById('dock');
+          if (d) d.className = 'dock-strip pos-' + e.target.value;
+        });
+        content.querySelector('#dock-size').addEventListener('input', (e) => {
+          QuantumOS.SettingsEngine.set('dock.size', parseInt(e.target.value));
+          document.documentElement.style.setProperty('--dock-icon-size', `${e.target.value}px`);
+        });
+      } else if (currentCat === 'windowManager') {
+        header.innerText = 'Window Manager';
+        const snap = QuantumOS.SettingsEngine.get('windowManager.snapEnabled') !== false;
+
+        content.innerHTML = `
+          ${createRow('Snapping Guides', 'Show side snap guides when dragging windows', `
+            <input type="checkbox" id="snap-chk" ${snap ? 'checked' : ''} />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#snap-chk').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('windowManager.snapEnabled', e.target.checked);
+        });
+      } else if (currentCat === 'accessibility') {
+        header.innerText = 'Accessibility';
+        const cur = QuantumOS.SettingsEngine.get('accessibility.largeCursor') === true;
+
+        content.innerHTML = `
+          ${createRow('Large System Cursor', 'Scale active mouse pointer size', `
+            <input type="checkbox" id="cursor-chk" ${cur ? 'checked' : ''} />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#cursor-chk').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('accessibility.largeCursor', e.target.checked);
+          document.body.classList.toggle('large-cursor', e.target.checked);
+        });
+      } else if (currentCat === 'performance') {
+        header.innerText = 'Performance';
+        const fx = QuantumOS.SettingsEngine.get('performance.effectsEnabled') !== false;
+
+        content.innerHTML = `
+          ${createRow('Desktop Particles Canvas', 'Floating interactive wave elements animation', `
+            <input type="checkbox" id="fx-chk" ${fx ? 'checked' : ''} />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#fx-chk').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('performance.effectsEnabled', e.target.checked);
+          QuantumOS.ParticleSystem.create();
+        });
+      } else if (currentCat === 'notifications') {
+        header.innerText = 'Notifications';
+        const notif = QuantumOS.SettingsEngine.get('notifications.enabled') !== false;
+
+        content.innerHTML = `
+          ${createRow('Toast Alerts Popups', 'Enable toast notifications slides', `
+            <input type="checkbox" id="notif-chk" ${notif ? 'checked' : ''} />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#notif-chk').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('notifications.enabled', e.target.checked);
+        });
+      } else if (currentCat === 'privacy') {
+        header.innerText = 'Privacy';
+        const hist = QuantumOS.SettingsEngine.get('privacy.saveHistory') !== false;
+
+        content.innerHTML = `
+          ${createRow('Retain Local Logs', 'Retain command history inputs locally', `
+            <input type="checkbox" id="hist-chk" ${hist ? 'checked' : ''} />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#hist-chk').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('privacy.saveHistory', e.target.checked);
+        });
+      } else if (currentCat === 'sound') {
+        header.innerText = 'Sound Controls';
+        const vol = QuantumOS.SettingsEngine.get('sound.volume') || 65;
+
+        content.innerHTML = `
+          ${createRow('Volume Level Gain', 'Control primary synth output amplitude level', `
+            <input type="range" id="vol-slider" min="0" max="100" value="${vol}" />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#vol-slider').addEventListener('input', (e) => {
+          QuantumOS.SettingsEngine.set('sound.volume', parseInt(e.target.value));
+        });
+      } else if (currentCat === 'input') {
+        header.innerText = 'Input Controls';
+        const mouse = QuantumOS.SettingsEngine.get('input.mouseSpeed') || 5;
+
+        content.innerHTML = `
+          ${createRow('Cursor Follow Sensitivity', 'Input processing multipliers', `
+            <input type="range" id="mouse-speed" min="1" max="10" value="${mouse}" />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#mouse-speed').addEventListener('input', (e) => {
+          QuantumOS.SettingsEngine.set('input.mouseSpeed', parseInt(e.target.value));
+        });
+      } else if (currentCat === 'search') {
+        header.innerText = 'Search Preferences';
+        const files = QuantumOS.SettingsEngine.get('search.includeFiles') !== false;
+
+        content.innerHTML = `
+          ${createRow('Index virtual files', 'Include file names in search result calculations', `
+            <input type="checkbox" id="search-files" ${files ? 'checked' : ''} />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#search-files').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('search.includeFiles', e.target.checked);
+        });
+      } else if (currentCat === 'ai') {
+        header.innerText = 'Quantum AI Settings';
+        const key = QuantumOS.SettingsEngine.get('ai.openRouterKey') || '';
+
+        content.innerHTML = `
+          ${createRow('OpenRouter API Token Key', 'Used to power the live LLM chat capabilities of Quantum AI', `
+            <input type="password" id="api-key-val" placeholder="sk-or-..." value="${key}" style="width:150px; padding:4px 8px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:4px; font-family:var(--font-mono); font-size:11px; color:inherit; outline:none;" />
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#api-key-val').addEventListener('change', (e) => {
+          QuantumOS.SettingsEngine.set('ai.openRouterKey', e.target.value.trim());
+          QuantumOS.NotificationSystem.showToast('AI Token Key updated.');
+        });
+      } else if (currentCat === 'experimental') {
+        header.innerText = 'Experimental Flags';
+
+        content.innerHTML = `
+          ${createRow('Hard Reset System Data', 'Clear IndexedDB, delete all filesystem files, and reset settings default structures', `
+            <button id="btn-reset" style="padding:6px 12px; background:rgba(255,80,80,0.15); border:1px solid rgba(255,80,80,0.3); color:#ff9999; border-radius:6px; font-size:12px; font-weight:700;">Reset system</button>
+          `)}
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+
+        content.querySelector('#btn-reset').addEventListener('click', async () => {
+          if (confirm("Hard reset virtual system data? All virtual files will be deleted.")) {
+            await QuantumOS.Storage.clearAll();
+            window.location.reload();
+          }
+        });
+      } else if (currentCat === 'about') {
+        header.innerText = 'About Quantum OS';
+        content.innerHTML = `
+          <div style="font-size:13px; color:var(--t2); line-height:1.6;">
+            <strong>Quantum OS v${QuantumOS.version || '1.0.0'}</strong>
+            <p style="margin-top:6px; font-size:12px; color:var(--t3);">Premium dark monochrome browser operating system environment.</p>
+          </div>
+        `;
+        panelBody.appendChild(header);
+        panelBody.appendChild(content);
+      }
+
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+    }
+
+    menuLinks.forEach(link => {
+      link.addEventListener('click', () => switchCat(link.getAttribute('data-cat')));
+    });
+
+    switchCat(currentCat);
+  }
+});
+
+// ==========================================
+// 6. TERMINAL APP
+// ==========================================
+AppRegistry.register({
+  id: 'terminal',
+  name: 'Console Terminal',
+  icon: 'terminal',
+  category: 'System',
+  defaultWidth: 700,
+  defaultHeight: 450,
+  singleton: false,
+  component: function(container, options) {
+    let currentDir = '/Desktop';
+    let history = [];
+    let historyIndex = -1;
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; height:100%; color:#00ff00; font-family:var(--font-mono); background:#050505; padding:12px; overflow:hidden; font-size:12px; line-height:1.4;">
+        <div class="term-scroll" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:4px; margin-bottom:8px; white-space:pre-wrap;">Quantum OS Shell [v1.0.0]
+(c) 2026 Quantum Corporation.
+
+Type "help" for instructions.
+
+</div>
+        <div style="display:flex; align-items:center; flex-shrink:0;">
+          <span class="prompt-text" style="color:#ffffff; font-weight:600; margin-right:6px;">quantum@quantum-os:${currentDir}$</span>
+          <input type="text" class="term-input" style="flex:1; background:transparent; border:none; color:#00ff00; font-family:inherit; font-size:inherit; outline:none; caret-color:#00ff00;" autocomplete="off" />
+        </div>
+      </div>
+    `;
+
+    const scroll = container.querySelector('.term-scroll');
+    const promptSpan = container.querySelector('.prompt-text');
+    const input = container.querySelector('.term-input');
+
+    const commands = {
+      help: () => `Commands: help, ls, cd, pwd, mkdir, touch, rm, cat, echo, clear, whoami, date, uname, neofetch`,
+      ls: (args) => {
+        let t = args[0] || currentDir;
+        if (!t.startsWith('/')) t = (currentDir === '/' ? '' : currentDir) + '/' + t;
+        t = t.replace(/\/+/g, '/');
+        const node = QuantumOS.FileSystem.get(t);
+        if (!node) return `ls: directory not found: ${args[0]}`;
+        const items = QuantumOS.FileSystem.list(t);
+        return items.map(item => item.type === 'directory' ? `[DIR]  ${item.name}` : `[FILE] ${item.name}`).join('\n') || 'Empty';
+      },
+      cd: (args) => {
+        let t = args[0] || '/Desktop';
+        if (t === '..') {
+          const parts = currentDir.split('/').filter(p => p);
+          parts.pop();
+          t = '/' + parts.join('/');
+        } else if (!t.startsWith('/')) {
+          t = (currentDir === '/' ? '' : currentDir) + '/' + t;
+        }
+        t = t.replace(/\/+/g, '/');
+        const node = QuantumOS.FileSystem.get(t);
+        if (node && node.type === 'directory') {
+          currentDir = t;
+          promptSpan.innerText = `quantum@quantum-os:${currentDir}$`;
+          return '';
+        }
+        return `cd: not a directory: ${args[0]}`;
+      },
+      pwd: () => currentDir,
+      mkdir: (args) => {
+        if (!args[0]) return 'mkdir: name required';
+        if (QuantumOS.FileSystem.createFolder(currentDir, args[0])) {
+          if (currentDir === '/Desktop') QuantumOS.DesktopManager.renderIcons();
+          return `Created folder ${args[0]}`;
+        }
+        return 'mkdir: failed (exists)';
+      },
+      touch: (args) => {
+        if (!args[0]) return 'touch: name required';
+        if (QuantumOS.FileSystem.createFile(currentDir, args[0], '')) {
+          if (currentDir === '/Desktop') QuantumOS.DesktopManager.renderIcons();
+          return `Created file ${args[0]}`;
+        }
+        return 'touch: failed (exists)';
+      },
+      rm: (args) => {
+        if (!args[0]) return 'rm: file/folder required';
+        const path = (currentDir === '/' ? '' : currentDir) + '/' + args[0];
+        if (QuantumOS.FileSystem.delete(path)) {
+          if (currentDir === '/Desktop') QuantumOS.DesktopManager.renderIcons();
+          return `Deleted ${args[0]}`;
+        }
+        return `rm: failed to delete ${args[0]}`;
+      },
+      cat: (args) => {
+        if (!args[0]) return 'cat: filename required';
+        const path = (currentDir === '/' ? '' : currentDir) + '/' + args[0];
+        const node = QuantumOS.FileSystem.get(path);
+        if (node && node.type === 'file') return node.content || '';
+        return `cat: ${args[0]}: file not found`;
+      },
+      echo: (args) => {
+        if (args.includes('>')) {
+          const idx = args.indexOf('>');
+          const content = args.slice(0, idx).join(' ').replace(/^"(.*)"$/, '$1');
+          const file = args[idx + 1];
+          if (!file) return 'echo: invalid redirection';
+          const path = (currentDir === '/' ? '' : currentDir) + '/' + file;
+          const node = QuantumOS.FileSystem.get(path);
+          if (node && node.type === 'file') {
+            node.content = content;
+            QuantumOS.FileSystem.save();
+          } else {
+            QuantumOS.FileSystem.createFile(currentDir, file, content);
+          }
+          if (currentDir === '/Desktop') QuantumOS.DesktopManager.renderIcons();
+          return `Redirected to ${file}`;
+        }
+        return args.join(' ').replace(/^"(.*)"$/, '$1');
+      },
+      clear: () => { scroll.innerHTML = ''; return ''; },
+      whoami: () => QuantumOS.state.currentUser || 'user',
+      date: () => new Date().toString(),
+      uname: () => `Quantum OS kernel 1.0.0`,
+      neofetch: () => `    .::::.      quantum@quantum-os
+   .::::::.     ----------------
+   ::::::::     OS: Quantum OS 1.0.0
+  ::::::::::    Shell: Virtual JS
+  .::::::::.    Uptime: ${(performance.now()/1000).toFixed(0)}s
+   .::::..      Display: Web Canvas`
+    };
+
+    function log(promptText, result = '') {
+      if (promptText) scroll.innerText += promptText + '\n';
+      if (result) scroll.innerText += result + '\n';
+      scroll.scrollTop = scroll.scrollHeight;
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const val = input.value.trim();
+        input.value = '';
+        if (!val) return;
+
+        history.push(val);
+        historyIndex = history.length;
+
+        const parts = val.split(' ');
+        const op = parts[0];
+        const args = parts.slice(1);
+
+        const promptText = `quantum@quantum-os:${currentDir}$ ${val}`;
+
+        if (commands[op]) {
+          const res = commands[op](args);
+          log(promptText, res);
+        } else {
+          log(promptText, `shell: command not found: ${op}`);
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (history.length > 0 && historyIndex > 0) {
+          historyIndex--;
+          input.value = history[historyIndex];
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (history.length > 0 && historyIndex < history.length - 1) {
+          historyIndex++;
+          input.value = history[historyIndex];
+        } else {
+          historyIndex = history.length;
+          input.value = '';
+        }
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        const val = input.value.trim();
+        const parts = val.split(' ');
+        const op = parts[0];
+
+        if (parts.length === 1) {
+          const matches = Object.keys(commands).filter(c => c.startsWith(op));
+          if (matches.length === 1) input.value = matches[0];
+          else if (matches.length > 1) log(`\n${matches.join('  ')}`);
+        } else {
+          const list = QuantumOS.FileSystem.list(currentDir);
+          const term = parts[parts.length - 1];
+          const matches = list.filter(item => item.name.startsWith(term));
+          if (matches.length === 1) {
+            parts[parts.length - 1] = matches[0].name;
+            input.value = parts.join(' ');
+          } else if (matches.length > 1) {
+            log(`\n${matches.map(m => m.name).join('  ')}`);
+          }
+        }
+      }
+    });
+
+    container.addEventListener('click', () => input.focus());
+  }
+});
+
+// ==========================================
+// 7. CALCULATOR APP
+// ==========================================
+AppRegistry.register({
+  id: 'calculator',
+  name: 'Calculator',
+  icon: 'calculator',
+  category: 'Utility',
+  defaultWidth: 340,
+  defaultHeight: 480,
+  singleton: false,
+  component: function(container, options) {
+    let mode = 'basic';
+    let mem = 0;
+    let expr = '';
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; height:100%; color:var(--t1); font-family:var(--font-sans); background:var(--bg3); padding:16px; gap:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:12px; color:var(--t2);">Mode: <span class="lbl-mode">Basic</span></strong>
+          <button class="btn-toggle" style="font-size:11px; padding:2px 8px; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:4px; color:inherit;">Scientific</button>
+        </div>
+        <div style="display:flex; flex-direction:column; background:#000; border:1px solid var(--border); border-radius:8px; padding:10px; align-items:flex-end;">
+          <div class="calc-formula" style="font-size:11px; color:var(--t3); min-height:14px;"></div>
+          <input type="text" class="calc-output" style="width:100%; text-align:right; font-size:22px; font-family:var(--font-mono); color:#fff; border:none; background:transparent;" value="0" readonly />
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; flex:1; justify-content:end;">
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px;">
+            <button class="calc-btn mem" data-val="MC">MC</button>
+            <button class="calc-btn mem" data-val="MR">MR</button>
+            <button class="calc-btn mem" data-val="M+">M+</button>
+            <button class="calc-btn mem" data-val="M-">M-</button>
+          </div>
+          <div class="sci-panel" style="display:none; grid-template-columns:repeat(5, 1fr); gap:6px;">
+            <button class="calc-btn sci" data-val="sin">sin</button>
+            <button class="calc-btn sci" data-val="cos">cos</button>
+            <button class="calc-btn sci" data-val="tan">tan</button>
+            <button class="calc-btn sci" data-val="ln">ln</button>
+            <button class="calc-btn sci" data-val="^">^</button>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; flex:1;">
+            <button class="calc-btn op" data-val="C" style="color:#ff5f57;">C</button>
+            <button class="calc-btn op" data-val="Backspace">⌫</button>
+            <button class="calc-btn op" data-val="(">(</button>
+            <button class="calc-btn op" data-val=")">)</button>
+            <button class="calc-btn num" data-val="7">7</button>
+            <button class="calc-btn num" data-val="8">8</button>
+            <button class="calc-btn num" data-val="9">9</button>
+            <button class="calc-btn op" data-val="/">/</button>
+            <button class="calc-btn num" data-val="4">4</button>
+            <button class="calc-btn num" data-val="5">5</button>
+            <button class="calc-btn num" data-val="6">6</button>
+            <button class="calc-btn op" data-val="*">*</button>
+            <button class="calc-btn num" data-val="1">1</button>
+            <button class="calc-btn num" data-val="2">2</button>
+            <button class="calc-btn num" data-val="3">3</button>
+            <button class="calc-btn op" data-val="-">-</button>
+            <button class="calc-btn num" data-val="0">0</button>
+            <button class="calc-btn num" data-val=".">.</button>
+            <button class="calc-btn op" data-val="=" style="background:#fff; color:#000;">=</button>
+            <button class="calc-btn op" data-val="+">+</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.querySelectorAll('.calc-btn').forEach(btn => {
+      btn.style.cssText = 'padding:10px 0; font-size:13px; font-weight:600; border-radius:6px; background:rgba(255,255,255,0.04); border:1px solid var(--border); transition:background 0.15s; color:inherit; outline:none; cursor:pointer;';
+      if (btn.classList.contains('num')) btn.style.background = 'rgba(255,255,255,0.07)';
+    });
+
+    const output = container.querySelector('.calc-output');
+    const formula = container.querySelector('.calc-formula');
+    const sciPanel = container.querySelector('.sci-panel');
+    const lblMode = container.querySelector('.lbl-mode');
+    const toggleBtn = container.querySelector('.btn-toggle');
+
+    toggleBtn.addEventListener('click', () => {
+      mode = mode === 'basic' ? 'scientific' : 'basic';
+      lblMode.innerText = mode === 'basic' ? 'Basic' : 'Scientific';
+      sciPanel.style.display = mode === 'basic' ? 'none' : 'grid';
+      toggleBtn.innerText = mode === 'basic' ? 'Scientific' : 'Basic';
+    });
+
+    function inputVal(val) {
+      if (val === 'C') {
+        expr = '';
+        output.value = '0';
+        formula.innerText = '';
+      } else if (val === 'Backspace') {
+        if (expr.length > 0) {
+          expr = expr.slice(0, -1);
+          output.value = expr || '0';
+        }
+      } else if (val === '=') {
+        try {
+          formula.innerText = expr + ' =';
+          let parsed = expr
+            .replace(/sin\(/g, 'Math.sin(')
+            .replace(/cos\(/g, 'Math.cos(')
+            .replace(/tan\(/g, 'Math.tan(')
+            .replace(/ln\(/g, 'Math.log(')
+            .replace(/\^/g, '**');
+          const res = Function(`"use strict"; return (${parsed})`)();
+          output.value = Number(res.toFixed(8)).toString();
+          expr = output.value;
+        } catch (e) {
+          output.value = 'Error';
+          expr = '';
+        }
+      } else if (['sin', 'cos', 'tan', 'ln'].includes(val)) {
+        expr += val + '(';
+        output.value = expr;
+      } else if (['MC', 'MR', 'M+', 'M-'].includes(val)) {
+        const cur = parseFloat(output.value) || 0;
+        if (val === 'MC') mem = 0;
+        else if (val === 'MR') { expr += mem.toString(); output.value = expr; }
+        else if (val === 'M+') mem += cur;
+        else if (val === 'M-') mem -= cur;
+      } else {
+        if (output.value === '0' && !isNaN(val)) expr = val;
+        else expr += val;
+        output.value = expr;
+      }
+    }
+
+    container.querySelectorAll('.calc-btn').forEach(btn => {
+      btn.addEventListener('click', () => inputVal(btn.getAttribute('data-val')));
+    });
+
+    const keyHandler = (e) => {
+      const active = QuantumOS.WindowManager.activeWindowId;
+      const win = container.closest('.window');
+      if (win && active && win.id === `window-${active}`) {
+        if ((e.key >= '0' && e.key <= '9') || ['.', '+', '-', '*', '/', '(', ')', '^'].includes(e.key)) {
+          inputVal(e.key);
+        } else if (e.key === 'Enter' || e.key === '=') {
+          inputVal('=');
+        } else if (e.key === 'Backspace') {
+          inputVal('Backspace');
+        } else if (e.key === 'Escape') {
+          inputVal('C');
+        }
+      }
+    };
+    window.addEventListener('keydown', keyHandler);
+
+    const observer = new MutationObserver(() => {
+      if (!document.body.contains(container)) {
+        window.removeEventListener('keydown', keyHandler);
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+});
+
+// ==========================================
+// 8. TEXT EDITOR APP
+// ==========================================
+AppRegistry.register({
+  id: 'textEditor',
+  name: 'Text Editor',
+  icon: 'file-text',
+  category: 'Productivity',
+  defaultWidth: 700,
+  defaultHeight: 480,
+  singleton: false,
+  component: function(container, options) {
+    let filePath = options.filePath || '';
+    let wrap = true;
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; height:100%; color:var(--t1); font-family:var(--font-sans); background:var(--bg2);">
+        <div style="display:flex; align-items:center; gap:8px; padding:6px 12px; border-bottom:1px solid var(--border); background:var(--bg3); flex-shrink:0;">
+          <button class="btn-new" title="New file" style="padding:4px 8px; border-radius:4px; color:inherit;"><i data-lucide="file-plus" style="width:14px; height:14px;"></i></button>
+          <button class="btn-open" title="Open file" style="padding:4px 8px; border-radius:4px; color:inherit;"><i data-lucide="folder-open" style="width:14px; height:14px;"></i></button>
+          <button class="btn-save" title="Save file" style="padding:4px 8px; border-radius:4px; color:inherit;"><i data-lucide="save" style="width:14px; height:14px;"></i></button>
+          <div style="width:1px; height:16px; background:var(--border); margin:0 4px;"></div>
+          <button class="btn-wrap active" title="Toggle Wrap" style="padding:4px 8px; border-radius:4px; color:inherit;"><i data-lucide="wrap-text" style="width:14px; height:14px;"></i></button>
+        </div>
+        <div style="flex:1; display:flex; position:relative; overflow:hidden; font-family:var(--font-mono); font-size:12px; line-height:1.5;">
+          <div class="gutter" style="width:36px; padding:10px 0; background:var(--bg); border-right:1px solid var(--border); text-align:right; padding-right:8px; color:var(--t3); user-select:none;">1</div>
+          <textarea class="editor-txt" style="flex:1; padding:10px; background:transparent; border:none; resize:none; color:inherit; font-family:inherit; font-size:inherit; line-height:inherit; outline:none; white-space:pre-wrap; overflow:auto;" placeholder="Type content here..."></textarea>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 12px; border-top:1px solid var(--border); background:var(--bg3); font-size:11px; color:var(--t3); flex-shrink:0;">
+          <div class="status-pos">Line 1, Col 1</div>
+          <div class="status-stats">Words: 0 | Chars: 0</div>
+        </div>
+      </div>
+    `;
+
+    const gutter = container.querySelector('.gutter');
+    const textarea = container.querySelector('.editor-txt');
+    const btnNew = container.querySelector('.btn-new');
+    const btnOpen = container.querySelector('.btn-open');
+    const btnSave = container.querySelector('.btn-save');
+    const btnWrap = container.querySelector('.btn-wrap');
+    const statusPos = container.querySelector('.status-pos');
+    const statusStats = container.querySelector('.status-stats');
+
+    function update() {
+      const lines = textarea.value.split('\n');
+      let html = '';
+      for (let i = 1; i <= lines.length; i++) html += `${i}<br/>`;
+      gutter.innerHTML = html;
+
+      const curPos = textarea.selectionStart;
+      const textUpToCursor = textarea.value.substr(0, curPos);
+      const line = textUpToCursor.split('\n').length;
+      const col = curPos - textUpToCursor.lastIndexOf('\n');
+      statusPos.innerText = `Line ${line}, Col ${col}`;
+
+      const words = textarea.value.trim() ? textarea.value.trim().split(/\s+/).length : 0;
+      statusStats.innerText = `Words: ${words} | Chars: ${textarea.value.length}`;
+    }
+
+    function load(path) {
+      filePath = path;
+      const file = QuantumOS.FileSystem.get(path);
+      if (file && file.type === 'file') {
+        textarea.value = file.content || '';
+        const win = container.closest('.window');
+        if (win) win.querySelector('.window-title span').innerText = `Text Editor - ${file.name}`;
+        update();
+      }
+    }
+
+    btnWrap.addEventListener('click', () => {
+      wrap = !wrap;
+      btnWrap.classList.toggle('active', wrap);
+      textarea.style.whiteSpace = wrap ? 'pre-wrap' : 'pre';
+    });
+
+    btnNew.addEventListener('click', () => {
+      textarea.value = '';
+      filePath = '';
+      const win = container.closest('.window');
+      if (win) win.querySelector('.window-title span').innerText = 'Text Editor - Untitled.txt';
+      update();
+    });
+
+    btnOpen.addEventListener('click', () => {
+      const path = prompt("Enter file path:", "/Desktop/welcome.txt");
+      if (path) {
+        if (QuantumOS.FileSystem.get(path)) load(path);
+        else QuantumOS.NotificationSystem.showToast('File not found');
+      }
+    });
+
+    btnSave.addEventListener('click', () => {
+      if (!filePath) {
+        const name = prompt("Save as filename:", "notes.txt");
+        if (!name) return;
+        filePath = `/Desktop/${name}`;
+        QuantumOS.FileSystem.createFile('/Desktop', name, textarea.value);
+      } else {
+        const file = QuantumOS.FileSystem.get(filePath);
+        if (file) {
+          file.content = textarea.value;
+          QuantumOS.FileSystem.save();
+        }
+      }
+      QuantumOS.DesktopManager.renderIcons();
+      QuantumOS.NotificationSystem.showToast('File saved.');
+      const parts = filePath.split('/');
+      const win = container.closest('.window');
+      if (win) win.querySelector('.window-title span').innerText = `Text Editor - ${parts[parts.length-1]}`;
+    });
+
+    textarea.addEventListener('input', update);
+    textarea.addEventListener('scroll', () => gutter.scrollTop = textarea.scrollTop);
+    textarea.addEventListener('keyup', update);
+    textarea.addEventListener('click', update);
+
+    if (filePath) load(filePath);
+    else update();
+  }
+});
+
+// ==========================================
+// 9. MUSIC PLAYER APP
+// ==========================================
+AppRegistry.register({
+  id: 'musicPlayer',
+  name: 'Music Player',
+  icon: 'music',
+  category: 'Entertainment',
+  defaultWidth: 700,
+  defaultHeight: 440,
+  singleton: false,
+  component: function(container, options) {
+    let state = false;
+    let volume = 50;
+    let loop = false;
+    let shuffle = false;
+    let activeIdx = 0;
+
+    const tracks = [
+      { name: 'Ambient Dreams', artist: 'Synth Wave', note: 'A4', dur: 120 },
+      { name: 'Quantum Core Beat', artist: 'Oscillator', note: 'C5', dur: 90 },
+      { name: 'Monochrome Drive', artist: 'Frequency Mod', note: 'E4', dur: 150 }
+    ];
+
+    let audioCtx = null;
+    let osc = null;
+    let gainNode = null;
+    let analyserNode = null;
+    let animId = null;
+    let elapsed = 0;
+    let timer = null;
+
+    container.innerHTML = `
+      <div style="display:flex; height:100%; color:var(--t1); font-family:var(--font-sans); background:var(--bg2);">
+        <aside style="width:180px; border-right:1px solid var(--border); background:var(--bg); padding:12px; display:flex; flex-direction:column; gap:8px; flex-shrink:0;">
+          <div style="font-size:10px; text-transform:uppercase; color:var(--t3); font-weight:700; padding:0 8px;">Playlist</div>
+          <div class="list-container" style="display:flex; flex-direction:column; gap:4px; overflow-y:auto; flex:1;"></div>
+        </aside>
+        <main style="flex:1; padding:24px; display:flex; flex-direction:column; justify-content:space-between; align-items:center; gap:16px;">
+          <div style="position:relative; width:130px; height:130px; border-radius:12px; background:var(--bg3); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+            <canvas class="visualizer" width="130" height="130" style="position:absolute; inset:0; opacity:0.5; pointer-events:none;"></canvas>
+            <i data-lucide="music" class="disc-icon" style="width:36px; height:36px; color:var(--t2); z-index:1;"></i>
+          </div>
+          <div style="text-align:center;">
+            <strong class="title-el" style="font-size:14px; color:var(--t1);">Ambient Dreams</strong><br/>
+            <span class="artist-el" style="font-size:11px; color:var(--t3);">Synth Wave</span>
+          </div>
+          <div style="width:100%; display:flex; align-items:center; gap:8px;">
+            <span class="time-el" style="font-size:10px; color:var(--t3); width:30px;">0:00</span>
+            <input type="range" class="seeker" min="0" max="100" value="0" style="flex:1; cursor:pointer;" />
+            <span class="time-tot" style="font-size:10px; color:var(--t3); width:30px;">2:00</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:16px;">
+            <button class="btn-loop-track" style="color:var(--t3);"><i data-lucide="repeat" style="width:14px; height:14px;"></i></button>
+            <button class="btn-prev-track"><i data-lucide="skip-back" style="width:16px; height:16px;"></i></button>
+            <button class="btn-play-track" style="width:40px; height:40px; border-radius:50%; background:#fff; color:#000; display:flex; align-items:center; justify-content:center;"><i data-lucide="play" style="width:18px; height:18px; fill:#000; color:#000;"></i></button>
+            <button class="btn-next-track"><i data-lucide="skip-forward" style="width:16px; height:16px;"></i></button>
+            <button class="btn-shuffle-track" style="color:var(--t3);"><i data-lucide="shuffle" style="width:14px; height:14px;"></i></button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; width:100px;">
+            <i data-lucide="volume-2" style="width:12px; height:12px; color:var(--t3);"></i>
+            <input type="range" class="vol-slider" min="0" max="100" value="50" style="flex:1;" />
+          </div>
+        </main>
+      </div>
+    `;
+
+    const listEl = container.querySelector('.list-container');
+    const titleEl = container.querySelector('.title-el');
+    const artistEl = container.querySelector('.artist-el');
+    const canvas = container.querySelector('.visualizer');
+    const canvasCtx = canvas.getContext('2d');
+    const timeEl = container.querySelector('.time-el');
+    const timeTot = container.querySelector('.time-tot');
+    const seeker = container.querySelector('.seeker');
+    const loopBtn = container.querySelector('.btn-loop-track');
+    const prevBtn = container.querySelector('.btn-prev-track');
+    const playBtn = container.querySelector('.btn-play-track');
+    const nextBtn = container.querySelector('.btn-next-track');
+    const shuffleBtn = container.querySelector('.btn-shuffle-track');
+    const volSlider = container.querySelector('.vol-slider');
+    const discIcon = container.querySelector('.disc-icon');
+
+    function render() {
+      listEl.innerHTML = '';
+      tracks.forEach((t, i) => {
+        const item = document.createElement('div');
+        const active = i === activeIdx;
+        item.style.cssText = `padding:6px 8px; border-radius:6px; cursor:pointer; background:${active ? 'rgba(255,255,255,0.06)' : 'transparent'}; font-size:11px;`;
+        item.innerHTML = `<strong style="color:${active ? 'var(--t1)' : 'var(--t2)'}">${t.name}</strong><br/><span style="color:var(--t3); font-size:9px;">${t.artist}</span>`;
+        item.addEventListener('click', () => selectTrack(i));
+        listEl.appendChild(item);
+      });
+    }
+
+    function selectTrack(i) {
+      stop();
+      activeIdx = i;
+      const track = tracks[activeIdx];
+      titleEl.innerText = track.name;
+      artistEl.innerText = track.artist;
+      elapsed = 0;
+      seeker.value = 0;
+      timeEl.innerText = '0:00';
+      timeTot.innerText = formatTime(track.dur);
+      render();
+      if (state) start();
+    }
+
+    function formatTime(s) {
+      const min = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return `${min}:${sec < 10 ? '0' : ''}${sec}`;
+    }
+
+    function start() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioCtx.createGain();
+        analyserNode = audioCtx.createAnalyser();
+        analyserNode.fftSize = 64;
+        gainNode.connect(analyserNode);
+        analyserNode.connect(audioCtx.destination);
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const track = tracks[activeIdx];
+      osc = audioCtx.createOscillator();
+      const freq = { 'A4': 440, 'C5': 523.25, 'E4': 329.63 }[track.note] || 440;
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      osc.connect(gainNode);
+      gainNode.gain.setValueAtTime(volume / 100 * 0.1, audioCtx.currentTime);
+      osc.start();
+
+      draw();
+
+      timer = setInterval(() => {
+        if (elapsed < track.dur) {
+          elapsed++;
+          seeker.value = (elapsed / track.dur) * 100;
+          timeEl.innerText = formatTime(elapsed);
+        } else {
+          if (loop) selectTrack(activeIdx);
+          else next();
+        }
+      }, 1000);
+
+      discIcon.style.animation = 'spin 6s linear infinite';
+    }
+
+    function stop() {
+      if (osc) {
+        try { osc.stop(); osc.disconnect(); } catch (e) {}
+        osc = null;
+      }
+      if (timer) { clearInterval(timer); timer = null; }
+      cancelAnimationFrame(animId);
+      discIcon.style.animation = 'none';
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function next() {
+      let idx = activeIdx + 1;
+      if (shuffle) idx = Math.floor(Math.random() * tracks.length);
+      else if (idx >= tracks.length) idx = 0;
+      selectTrack(idx);
+    }
+
+    function prev() {
+      let idx = activeIdx - 1;
+      if (idx < 0) idx = tracks.length - 1;
+      selectTrack(idx);
+    }
+
+    function draw() {
+      animId = requestAnimationFrame(draw);
+      const len = analyserNode.frequencyBinCount;
+      const data = new Uint8Array(len);
+      analyserNode.getByteTimeDomainData(data);
+
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+      canvasCtx.lineWidth = 1.5;
+      canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      canvasCtx.beginPath();
+
+      const slice = canvas.width / len;
+      let x = 0;
+      for (let i = 0; i < len; i++) {
+        const v = data[i] / 128.0;
+        const y = v * canvas.height / 2;
+        if (i === 0) canvasCtx.moveTo(x, y);
+        else canvasCtx.lineTo(x, y);
+        x += slice;
+      }
+      canvasCtx.lineTo(canvas.width, canvas.height / 2);
+      canvasCtx.stroke();
+    }
+
+    playBtn.addEventListener('click', () => {
+      state = !state;
+      if (state) {
+        playBtn.innerHTML = '<i data-lucide="pause" style="width:18px; height:18px; fill:#000; color:#000;"></i>';
+        start();
+      } else {
+        playBtn.innerHTML = '<i data-lucide="play" style="width:18px; height:18px; fill:#000; color:#000;"></i>';
+        stop();
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+    });
+
+    nextBtn.addEventListener('click', next);
+    prevBtn.addEventListener('click', prev);
+
+    loopBtn.addEventListener('click', () => {
+      loop = !loop;
+      loopBtn.style.color = loop ? 'var(--t1)' : 'var(--t3)';
+    });
+
+    shuffleBtn.addEventListener('click', () => {
+      shuffle = !shuffle;
+      shuffleBtn.style.color = shuffle ? 'var(--t1)' : 'var(--t3)';
+    });
+
+    volSlider.addEventListener('input', (e) => {
+      volume = e.target.value;
+      if (gainNode) gainNode.gain.setValueAtTime(volume / 100 * 0.15, audioCtx.currentTime);
+    });
+
+    seeker.addEventListener('input', (e) => {
+      const track = tracks[activeIdx];
+      elapsed = Math.floor((e.target.value / 100) * track.dur);
+      timeEl.innerText = formatTime(elapsed);
+    });
+
+    const observer = new MutationObserver(() => {
+      if (!document.body.contains(container)) {
+        stop();
+        if (audioCtx) audioCtx.close();
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    render();
+    selectTrack(0);
+  }
+});
+
+// ==========================================
+// 10. GAMES BROWSER APP
+// ==========================================
+AppRegistry.register({
+  id: 'gamesBrowser',
+  name: 'Games Library',
+  icon: 'gamepad',
+  category: 'Entertainment',
+  defaultWidth: 900,
+  defaultHeight: 600,
+  singleton: false,
+  component: function(container, options) {
+    let query = '';
+
+    const list = window.games || [
+      { name: 'Space Combat', url: 'https://stunning-quokka-4284d0.netlify.app/semag/doom/index.html' },
+      { name: 'Retro Bowl', url: 'https://ghgames.netlify.app/games(blckt)/retro.html' }
+    ];
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; height:100%; color:var(--t1); font-family:var(--font-sans); background:var(--bg2);">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); background:var(--bg3); flex-shrink:0;">
+          <h3 style="font-size:14px; font-weight:700;">Local Games Library</h3>
+          <div style="display:flex; align-items:center; gap:8px; padding:6px 12px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; width:250px;">
+            <i data-lucide="search" style="width:14px; height:14px; color:var(--t3);"></i>
+            <input type="text" class="game-search-input" placeholder="Search..." style="flex:1; background:transparent; border:none; font-size:12px; outline:none; color:inherit;" />
+          </div>
+        </div>
+        <div class="games-grid-view" style="flex:1; overflow-y:auto; padding:16px; display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:12px;"></div>
+        <div class="games-player-panel" style="display:none; position:absolute; inset:0; background:#000; z-index:100; flex-direction:column;">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--bg3); border-bottom:1px solid var(--border);">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button class="btn-back" style="padding:4px 8px; font-size:11px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:4px; color:inherit;"><i data-lucide="arrow-left" style="width:12px; height:12px; display:inline-block; vertical-align:-2px; margin-right:4px;"></i>Back</button>
+              <strong class="game-title" style="font-size:12px;">Game</strong>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn-reload" style="padding:4px 8px; font-size:11px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:4px; color:inherit;"><i data-lucide="rotate-cw" style="width:12px; height:12px;"></i></button>
+              <button class="btn-full" style="padding:4px 8px; font-size:11px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:4px; color:inherit;"><i data-lucide="maximize" style="width:12px; height:12px;"></i></button>
+            </div>
+          </div>
+          <iframe class="games-iframe" style="flex:1; border:none; background:#000;" src="about:blank"></iframe>
+        </div>
+      </div>
+    `;
+
+    const search = container.querySelector('.game-search-input');
+    const grid = container.querySelector('.games-grid-view');
+    const panel = container.querySelector('.games-player-panel');
+    const backBtn = container.querySelector('.btn-back');
+    const reloadBtn = container.querySelector('.btn-reload');
+    const fullBtn = container.querySelector('.btn-full');
+    const iframe = container.querySelector('.games-iframe');
+    const title = container.querySelector('.game-title');
+
+    function render() {
+      grid.innerHTML = '';
+      const filter = list.filter(g => g.name.toLowerCase().includes(query.toLowerCase()));
+
+      if (filter.length === 0) {
+        grid.innerHTML = '<div style="color:var(--t3); font-size:12px; padding:12px;">No games match search query</div>';
+        return;
+      }
+
+      filter.forEach(game => {
+        const tile = document.createElement('div');
+        tile.style.cssText = 'background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:10px; align-items:center; cursor:pointer; text-align:center; transition:background 0.2s;';
+        tile.innerHTML = `
+          <div style="width:40px; height:40px; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid var(--border); display:flex; align-items:center; justify-content:center;"><i data-lucide="play" style="width:16px; height:16px; color:#fff;"></i></div>
+          <span style="font-size:11px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;">${game.name}</span>
+        `;
+
+        tile.addEventListener('click', () => {
+          title.innerText = game.name;
+          iframe.src = game.url;
+          panel.style.display = 'flex';
+        });
+
+        grid.appendChild(tile);
+      });
+
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { class: 'lucide-icon' } });
+    }
+
+    backBtn.addEventListener('click', () => {
+      iframe.src = 'about:blank';
+      panel.style.display = 'none';
+    });
+
+    reloadBtn.addEventListener('click', () => {
+      const src = iframe.src;
+      iframe.src = 'about:blank';
+      setTimeout(() => iframe.src = src, 50);
+    });
+
+    fullBtn.addEventListener('click', () => {
+      if (iframe.requestFullscreen) iframe.requestFullscreen();
+      else if (iframe.webkitRequestFullscreen) iframe.webkitRequestFullscreen();
+    });
+
+    search.addEventListener('input', (e) => {
+      query = e.target.value;
+      render();
+    });
+
+    render();
+  }
+});

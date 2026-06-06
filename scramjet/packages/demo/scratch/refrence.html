@@ -1,0 +1,2128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Sparx Maths</title>
+	<link rel="icon" href="https://intercom-help.eu/sparx-maths-help-centre/assets/favicon" type="image/x-icon">
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+		rel="stylesheet">
+	<script src="https://intelligent-dedication-production-f8d8.up.railway.app/scramjet/scramjet.js"></script>
+	<script src="https://intelligent-dedication-production-f8d8.up.railway.app/controller/controller.api.js"></script>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box
+		}
+
+		:root {
+			--bg: #000;
+			--bg2: #080808;
+			--bg3: #111;
+			--card: rgba(255, 255, 255, 0.03);
+			--border: rgba(255, 255, 255, 0.07);
+			--t1: #fff;
+			--t2: #999;
+			--t3: #555;
+			--r: 14px;
+			--tr: cubic-bezier(.4, 0, .2, 1);
+			--glass-bg: rgba(255, 255, 255, 0.05);
+			--glass-border: rgba(255, 255, 255, 0.1);
+		}
+
+		body {
+			font-family: 'Inter', system-ui, sans-serif;
+			background: var(--bg);
+			color: var(--t1);
+			min-height: 100vh;
+			overflow-x: hidden;
+			-webkit-font-smoothing: antialiased;
+			transition: background 0.5s ease;
+		}
+
+		body.liquid-glass {
+			--bg: rgba(20, 20, 30, 0.6);
+			--bg2: rgba(30, 30, 40, 0.5);
+			--bg3: rgba(40, 40, 55, 0.4);
+			--card: rgba(255, 255, 255, 0.06);
+			--border: rgba(255, 255, 255, 0.12);
+			background: linear-gradient(135deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #16213e 75%, #1a1a2e 100%);
+			background-size: 400% 400%;
+			animation: gradientShift 15s ease infinite;
+		}
+
+		@keyframes gradientShift {
+			0% {
+				background-position: 0% 50%;
+			}
+
+			50% {
+				background-position: 100% 50%;
+			}
+
+			100% {
+				background-position: 0% 50%;
+			}
+		}
+
+		body.liquid-glass::before {
+			content: '';
+			position: fixed;
+			top: -50%;
+			left: -50%;
+			width: 200%;
+			height: 200%;
+			background: radial-gradient(circle at 30% 20%, rgba(120, 100, 255, 0.1), transparent 50%),
+				radial-gradient(circle at 70% 60%, rgba(255, 100, 150, 0.08), transparent 50%),
+				radial-gradient(circle at 50% 50%, rgba(100, 200, 255, 0.06), transparent 50%);
+			pointer-events: none;
+			z-index: -1;
+			animation: liquidMove 20s ease-in-out infinite;
+		}
+
+		@keyframes liquidMove {
+
+			0%,
+			100% {
+				transform: translate(0, 0) rotate(0deg);
+			}
+
+			25% {
+				transform: translate(2%, -1%) rotate(2deg);
+			}
+
+			50% {
+				transform: translate(-1%, 1%) rotate(-1deg);
+			}
+
+			75% {
+				transform: translate(1%, 2%) rotate(1deg);
+			}
+		}
+
+		body.liquid-glass .card,
+		body.liquid-glass .cloud-game-card {
+			backdrop-filter: blur(20px) saturate(180%);
+			-webkit-backdrop-filter: blur(20px) saturate(180%);
+			background: rgba(255, 255, 255, 0.06);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+		}
+
+		body.liquid-glass .card:hover,
+		body.liquid-glass .cloud-game-card:hover {
+			background: rgba(255, 255, 255, 0.1);
+			border-color: rgba(255, 255, 255, 0.2);
+			box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.08);
+		}
+
+		body.liquid-glass .tabs {
+			backdrop-filter: blur(20px) saturate(180%);
+			-webkit-backdrop-filter: blur(20px) saturate(180%);
+			background: rgba(30, 30, 50, 0.5);
+		}
+
+		body.liquid-glass .modal-overlay {
+			background: rgba(0, 0, 0, 0.7);
+			backdrop-filter: blur(10px);
+			-webkit-backdrop-filter: blur(10px);
+		}
+
+		body.liquid-glass .modal-box {
+			backdrop-filter: blur(25px) saturate(200%);
+			-webkit-backdrop-filter: blur(25px) saturate(200%);
+			background: rgba(30, 30, 50, 0.7);
+			border: 1px solid rgba(255, 255, 255, 0.15);
+		}
+
+		::-webkit-scrollbar {
+			width: 5px
+		}
+
+		::-webkit-scrollbar-track {
+			background: transparent
+		}
+
+		::-webkit-scrollbar-thumb {
+			background: rgba(255, 255, 255, .15);
+			border-radius: 9px
+		}
+
+		/* Tab Bar */
+		.tabs {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			z-index: 100;
+			display: flex;
+			gap: 0;
+			background: rgba(0, 0, 0, .85);
+			backdrop-filter: blur(20px);
+			border-bottom: 1px solid var(--border);
+			padding: 0 12px;
+			height: 44px;
+			align-items: stretch;
+			overflow-x: auto;
+			scrollbar-width: none;
+		}
+
+		.tabs::-webkit-scrollbar {
+			display: none;
+		}
+
+		.tab {
+			background: 0;
+			border: 0;
+			color: var(--t3);
+			font: 500 .8rem/1 'Inter', sans-serif;
+			padding: 0 12px;
+			cursor: pointer;
+			position: relative;
+			transition: color .25s;
+			white-space: nowrap;
+		}
+
+		.tab:hover {
+			color: var(--t2)
+		}
+
+		.tab.active {
+			color: #fff
+		}
+
+		.tab.active::after {
+			content: '';
+			position: absolute;
+			bottom: 0;
+			left: 8px;
+			right: 8px;
+			height: 2px;
+			background: #fff;
+			border-radius: 2px 2px 0 0;
+			animation: tabIn .25s var(--tr)
+		}
+
+		@keyframes tabIn {
+			from {
+				transform: scaleX(0)
+			}
+
+			to {
+				transform: scaleX(1)
+			}
+		}
+
+		.theme-badge {
+			position: absolute;
+			top: 2px;
+			right: 4px;
+			font-size: 0.5rem;
+			color: var(--t3);
+			opacity: 0;
+			transition: opacity 0.3s;
+		}
+
+		body.liquid-glass .theme-badge {
+			opacity: 1;
+			color: rgba(255, 255, 255, 0.5);
+		}
+
+		/* Panels */
+		.panel {
+			display: none;
+			padding: 64px 20px 30px;
+			min-height: 100vh;
+			animation: fadeUp .4s var(--tr)
+		}
+
+		.panel.active {
+			display: block
+		}
+
+		@keyframes fadeUp {
+			from {
+				opacity: 0;
+				transform: translateY(16px)
+			}
+
+			to {
+				opacity: 1;
+				transform: translateY(0)
+			}
+		}
+
+		/* Home */
+		.home-center {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			min-height: 80vh;
+			gap: 24px;
+			text-align: center
+		}
+
+		.brand {
+			font-size: clamp(3rem, 8vw, 5rem);
+			font-weight: 900;
+			letter-spacing: -.04em;
+			background: linear-gradient(135deg, #fff 0%, #888 50%, #fff 100%);
+			background-size: 200% 200%;
+			-webkit-background-clip: text;
+			-webkit-text-fill-color: transparent;
+			animation: shimmer 4s ease infinite
+		}
+
+		@keyframes shimmer {
+
+			0%,
+			100% {
+				background-position: 0% 50%
+			}
+
+			50% {
+				background-position: 100% 50%
+			}
+		}
+
+		.sub {
+			color: var(--t3);
+			font-size: .9rem;
+			letter-spacing: .1em;
+			text-transform: uppercase;
+			font-weight: 500
+		}
+
+		.search-box {
+			width: min(520px, 90vw);
+			position: relative
+		}
+
+		.search-box input {
+			width: 100%;
+			padding: 14px 20px 14px 44px;
+			border-radius: 40px;
+			border: 1px solid var(--border);
+			background: var(--card);
+			color: #fff;
+			font: 400 .95rem/1 'Inter', sans-serif;
+			outline: 0;
+			transition: all .3s var(--tr)
+		}
+
+		.search-box input:focus {
+			border-color: rgba(255, 255, 255, .2);
+			box-shadow: 0 0 0 4px rgba(255, 255, 255, .03), 0 8px 32px rgba(0, 0, 0, .5)
+		}
+
+		.search-box input::placeholder {
+			color: var(--t3)
+		}
+
+		.search-box svg {
+			position: absolute;
+			left: 16px;
+			top: 50%;
+			transform: translateY(-50%);
+			color: var(--t3);
+			pointer-events: none
+		}
+
+		.cat-btns {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 10px;
+			justify-content: center;
+			margin-top: 8px
+		}
+
+		.cat-btn {
+			padding: 10px 24px;
+			border-radius: 40px;
+			border: 1px solid var(--border);
+			background: var(--card);
+			color: var(--t2);
+			font: 500 .85rem/1 'Inter', sans-serif;
+			cursor: pointer;
+			transition: all .3s var(--tr)
+		}
+
+		.cat-btn:hover {
+			background: rgba(255, 255, 255, .08);
+			color: #fff;
+			border-color: rgba(255, 255, 255, .15);
+			transform: translateY(-2px)
+		}
+
+		.cat-btn:active {
+			transform: scale(.97)
+		}
+
+		.home-footer {
+			color: var(--t3);
+			font-size: .7rem;
+			letter-spacing: .05em;
+			text-transform: uppercase;
+			margin-top: 16px
+		}
+
+		.blank-btn {
+			padding: 12px 28px;
+			border-radius: 40px;
+			border: 1px solid var(--border);
+			background: rgba(255, 255, 255, .05);
+			color: #fff;
+			font: 600 .9rem/1 'Inter', sans-serif;
+			cursor: pointer;
+			transition: all .3s var(--tr);
+			margin-top: 8px
+		}
+
+		.blank-btn:hover {
+			background: rgba(255, 255, 255, .1);
+			transform: translateY(-2px);
+			box-shadow: 0 8px 24px rgba(0, 0, 0, .5)
+		}
+
+		/* Cards */
+		.grid {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 14px;
+			justify-content: center;
+			max-width: 1300px;
+			margin: 20px auto
+		}
+
+		.card {
+			width: 160px;
+			background: var(--card);
+			padding: 16px 12px;
+			border-radius: var(--r);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			text-align: center;
+			border: 1px solid var(--border);
+			cursor: pointer;
+			transition: all .35s var(--tr);
+			position: relative;
+			overflow: hidden
+		}
+
+		.card::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, .06), transparent 70%);
+			opacity: 0;
+			transition: opacity .35s
+		}
+
+		.card:hover {
+			transform: translateY(-6px) scale(1.02);
+			border-color: rgba(255, 255, 255, .15);
+			box-shadow: 0 16px 40px rgba(0, 0, 0, .6)
+		}
+
+		.card:hover::before {
+			opacity: 1
+		}
+
+		.card img {
+			width: 64px;
+			height: 64px;
+			border-radius: 12px;
+			margin-bottom: 10px;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, .5);
+			transition: transform .35s var(--tr)
+		}
+
+		.card:hover img {
+			transform: scale(1.06)
+		}
+
+		.card span {
+			font: 600 .85rem/1.3 'Inter', sans-serif;
+			color: var(--t1)
+		}
+
+		/* Cloud Game Cards */
+		.cloud-game-card {
+			width: 180px;
+			background: var(--card);
+			border-radius: var(--r);
+			overflow: hidden;
+			border: 1px solid var(--border);
+			cursor: pointer;
+			transition: all .35s var(--tr);
+			position: relative;
+		}
+
+		.cloud-game-card:hover {
+			transform: translateY(-6px) scale(1.02);
+			border-color: rgba(255, 255, 255, .15);
+			box-shadow: 0 16px 40px rgba(0, 0, 0, .6)
+		}
+
+		.cloud-game-card img {
+			width: 100%;
+			height: 240px;
+			object-fit: cover;
+			display: block;
+		}
+
+		.cloud-game-title {
+			padding: 12px;
+			font: 600 .85rem/1.3 'Inter', sans-serif;
+			color: var(--t1);
+			text-align: center;
+			background: var(--bg2);
+		}
+
+		.cloud-search {
+			width: 100%;
+			max-width: 500px;
+			margin: 0 auto 20px;
+			position: relative;
+		}
+
+		.cloud-search input {
+			width: 100%;
+			padding: 12px 20px 12px 40px;
+			border-radius: 30px;
+			border: 1px solid var(--border);
+			background: var(--card);
+			color: #fff;
+			font: 400 .9rem/1 'Inter', sans-serif;
+			outline: 0;
+			transition: all .3s var(--tr);
+		}
+
+		.cloud-search input:focus {
+			border-color: rgba(255, 255, 255, .2);
+			box-shadow: 0 0 0 3px rgba(255, 255, 255, .03);
+		}
+
+		.cloud-search input::placeholder {
+			color: var(--t3);
+		}
+
+		.cloud-search svg {
+			position: absolute;
+			left: 14px;
+			top: 50%;
+			transform: translateY(-50%);
+			color: var(--t3);
+			pointer-events: none;
+		}
+
+		.back-btn {
+			padding: 10px 24px;
+			border-radius: 30px;
+			border: 1px solid var(--border);
+			background: var(--card);
+			color: var(--t2);
+			font: 500 .85rem/1 'Inter', sans-serif;
+			cursor: pointer;
+			transition: all .3s;
+			margin-bottom: 16px;
+			display: inline-block
+		}
+
+		.back-btn:hover {
+			color: #fff;
+			border-color: rgba(255, 255, 255, .15);
+			transform: translateY(-2px)
+		}
+
+		.section-title {
+			font: 700 1.5rem/1 'Inter', sans-serif;
+			margin-bottom: 16px;
+			color: #fff
+		}
+
+		.cloud-count {
+			color: var(--t3);
+			font-size: .8rem;
+			margin-bottom: 16px;
+			text-align: center;
+		}
+
+		/* Game Window */
+		#game-window {
+			display: none;
+			flex-direction: column;
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			z-index: 9999;
+			padding: 24px;
+			background: rgba(10, 10, 10, 0.98);
+			backdrop-filter: blur(20px);
+			animation: fadeUp .3s var(--tr);
+		}
+
+		#game-title {
+			text-align: center;
+			font-size: 1.5rem;
+			font-weight: 700;
+		}
+
+		#game-window iframe {
+			flex: 1;
+			width: 100%;
+			max-width: 1400px;
+			margin: 0 auto;
+			border: 1px solid var(--border);
+			border-radius: 12px;
+			background: #000;
+			box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+		}
+
+		.g-controls {
+			display: flex;
+			gap: 8px;
+			margin-top: 14px;
+			flex-wrap: wrap;
+			justify-content: center;
+			align-items: center;
+		}
+
+		.g-controls button {
+			padding: 9px 20px;
+			border-radius: 30px;
+			border: 1px solid var(--border);
+			background: var(--card);
+			color: var(--t2);
+			font: 500 .82rem/1 'Inter', sans-serif;
+			cursor: pointer;
+			transition: all .3s
+		}
+
+		.g-controls button:hover {
+			color: #fff;
+			border-color: rgba(255, 255, 255, .15);
+			background: rgba(255, 255, 255, .06)
+		}
+
+		/* Modal Overlay */
+		.modal-overlay {
+			display: none;
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.8);
+			z-index: 10001;
+			justify-content: center;
+			align-items: center;
+			animation: fadeIn .2s ease;
+		}
+
+		.modal-overlay.active {
+			display: flex;
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+			}
+
+			to {
+				opacity: 1;
+			}
+		}
+
+		.modal-box {
+			background: #1a1a1a;
+			border-radius: 20px;
+			padding: 32px 28px;
+			max-width: 460px;
+			width: 92%;
+			text-align: center;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+			animation: modalPop .35s cubic-bezier(.4, 0, .2, 1);
+		}
+
+		@keyframes modalPop {
+			from {
+				transform: scale(0.92);
+				opacity: 0;
+			}
+
+			to {
+				transform: scale(1);
+				opacity: 1;
+			}
+		}
+
+		.modal-box .modal-game-img {
+			width: 100%;
+			height: 140px;
+			object-fit: cover;
+			border-radius: 12px;
+			margin-bottom: 16px;
+			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+		}
+
+		.modal-box h2 {
+			font-size: 1.2rem;
+			font-weight: 700;
+			color: #fff;
+			margin-bottom: 6px;
+		}
+
+		.modal-box .modal-game-name {
+			font-size: 0.85rem;
+			color: #888;
+			margin-bottom: 20px;
+		}
+
+		.modal-buttons {
+			display: flex;
+			gap: 12px;
+			justify-content: center;
+			flex-wrap: wrap;
+		}
+
+		.btn-modal {
+			flex: 1;
+			min-width: 140px;
+			padding: 14px 20px;
+			border-radius: 14px;
+			font: 600 0.9rem/1 'Inter', sans-serif;
+			cursor: pointer;
+			transition: all 0.25s ease;
+			border: none;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 8px;
+		}
+
+		.btn-modal-white {
+			background: #fff;
+			color: #000;
+		}
+
+		.btn-modal-white:hover {
+			background: #e5e5e5;
+			transform: translateY(-2px);
+			box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
+		}
+
+		.btn-modal-dark {
+			background: #1a1a1a;
+			color: #fff;
+			border: 1px solid rgba(255, 255, 255, 0.2);
+		}
+
+		.btn-modal-dark:hover {
+			background: #252525;
+			border-color: rgba(255, 255, 255, 0.35);
+			transform: translateY(-2px);
+			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		}
+
+		.btn-modal:active {
+			transform: scale(0.97);
+		}
+
+		/* Proxy Notice */
+		.proxy-notice {
+			position: fixed;
+			top: 60px;
+			left: 50%;
+			transform: translateX(-50%);
+			background: rgba(108, 92, 231, 0.9);
+			color: white;
+			padding: 10px 24px;
+			border-radius: 25px;
+			z-index: 999;
+			font-size: 0.85rem;
+			animation: slideDown 0.3s ease;
+			display: none;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.proxy-notice.visible {
+			display: flex;
+		}
+
+		@keyframes slideDown {
+			from {
+				opacity: 0;
+				transform: translateX(-50%) translateY(-20px);
+			}
+
+			to {
+				opacity: 1;
+				transform: translateX(-50%) translateY(0);
+			}
+		}
+
+		/* Proxy */
+		.proxy-bar {
+			display: flex;
+			gap: 8px;
+			width: 100%;
+			max-width: 1400px;
+			margin: 0 auto 16px;
+			align-items: center
+		}
+
+		.proxy-bar input {
+			flex: 1;
+			padding: 12px 18px;
+			border-radius: 10px;
+			border: 1px solid var(--border);
+			background: var(--card);
+			color: #fff;
+			font: .9rem 'Inter', sans-serif;
+			outline: 0;
+			transition: all .3s
+		}
+
+		.proxy-bar input:focus {
+			border-color: rgba(255, 255, 255, .2);
+			box-shadow: 0 0 0 3px rgba(255, 255, 255, .03)
+		}
+
+		.proxy-bar button {
+			padding: 12px 24px;
+			border-radius: 10px;
+			border: 0;
+			background: #fff;
+			color: #000;
+			font: 600 .85rem/1 'Inter', sans-serif;
+			cursor: pointer;
+			transition: all .2s
+		}
+
+		.proxy-bar button:hover {
+			background: #ddd;
+			transform: translateY(-1px)
+		}
+
+		.proxy-nav {
+			display: flex;
+			gap: 4px;
+			width: 100%;
+			max-width: 1400px;
+			margin: 0 auto 12px
+		}
+
+		.proxy-nav button {
+			width: 34px;
+			height: 34px;
+			border-radius: 8px;
+			border: 1px solid var(--border);
+			background: var(--card);
+			color: var(--t3);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: all .2s;
+			font-size: 1.1rem;
+			padding: 0
+		}
+
+		.proxy-nav button:hover {
+			color: #fff;
+			background: rgba(255, 255, 255, .06)
+		}
+
+		/* Browser Tabs */
+		.browser-tabs-container {
+			display: flex;
+			align-items: center;
+			width: 100%;
+			max-width: 1400px;
+			margin: 0 auto 12px;
+			background: var(--bg2);
+			border-radius: 12px 12px 0 0;
+			padding: 8px 8px 0;
+			border: 1px solid var(--border);
+			border-bottom: none;
+		}
+
+		.browser-tabs {
+			display: flex;
+			flex: 1;
+			overflow-x: auto;
+			scrollbar-width: none;
+		}
+
+		.browser-tabs::-webkit-scrollbar {
+			display: none;
+		}
+
+		.browser-tab {
+			display: flex;
+			align-items: center;
+			background: rgba(255, 255, 255, 0.03);
+			border: 1px solid transparent;
+			border-radius: 8px 8px 0 0;
+			padding: 8px 12px;
+			margin-right: 4px;
+			min-width: 120px;
+			max-width: 200px;
+			cursor: pointer;
+			position: relative;
+			transition: all .2s;
+			flex: 1;
+		}
+
+		.browser-tab:hover {
+			background: rgba(255, 255, 255, 0.06);
+		}
+
+		.browser-tab.active {
+			background: var(--card);
+			border-color: var(--border);
+			border-bottom-color: transparent;
+			box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+			z-index: 2;
+		}
+
+		.browser-tab.active::after {
+			content: '';
+			position: absolute;
+			bottom: -1px;
+			left: 0;
+			right: 0;
+			height: 1px;
+			background: var(--card);
+		}
+
+		.b-tab-icon {
+			width: 16px;
+			height: 16px;
+			margin-right: 8px;
+			border-radius: 2px;
+		}
+
+		.b-tab-title {
+			flex: 1;
+			font-size: 0.8rem;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			color: var(--t2);
+		}
+
+		.browser-tab.active .b-tab-title {
+			color: #fff;
+		}
+
+		.b-tab-close {
+			width: 18px;
+			height: 18px;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 14px;
+			line-height: 1;
+			color: var(--t3);
+			margin-left: 4px;
+		}
+
+		.b-tab-close:hover {
+			background: rgba(255, 255, 255, 0.1);
+			color: #fff;
+		}
+
+		.new-tab-btn {
+			width: 28px;
+			height: 28px;
+			border-radius: 50%;
+			border: none;
+			background: transparent;
+			color: var(--t2);
+			font-size: 1.2rem;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			cursor: pointer;
+			transition: all .2s;
+			margin-left: 8px;
+			margin-bottom: 6px;
+		}
+
+		.new-tab-btn:hover {
+			background: rgba(255, 255, 255, 0.1);
+			color: #fff;
+		}
+
+		#proxy-frames-container {
+			width: 100%;
+			max-width: 1400px;
+			margin: 0 auto;
+			position: relative;
+			height: calc(100vh - 250px);
+		}
+
+		.proxy-frame-wrap {
+			position: absolute;
+			inset: 0;
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity .2s;
+		}
+
+		.proxy-frame-wrap.active {
+			opacity: 1;
+			pointer-events: auto;
+		}
+
+		.proxy-frame-wrap iframe {
+			width: 100%;
+			height: 100%;
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			background: #fff;
+		}
+
+		.proxy-status {
+			text-align: center;
+			color: var(--t3);
+			font-size: .8rem;
+			margin-bottom: 12px
+		}
+
+		/* AI Chat */
+		.chat-wrap {
+			max-width: 800px;
+			margin: 0 auto;
+			display: flex;
+			flex-direction: column;
+			height: calc(100vh - 200px);
+			border: 1px solid var(--border);
+			border-radius: 14px;
+			background: rgba(255, 255, 255, 0.02);
+			padding: 20px;
+			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+		}
+
+		.chat-top {
+			display: flex;
+			gap: 8px;
+			margin-bottom: 12px;
+			flex-wrap: wrap;
+			align-items: center
+		}
+
+		.chat-top input {
+			padding: 10px 14px;
+			border-radius: 10px;
+			border: 1px solid var(--border);
+			background: var(--card);
+			color: #fff;
+			font: .85rem 'Inter', sans-serif;
+			outline: 0;
+			flex: 1;
+			min-width: 160px;
+			display: none;
+		}
+
+		.chat-msgs {
+			flex: 1;
+			overflow-y: auto;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+			padding: 10px 0
+		}
+
+		.msg {
+			padding: 12px 16px;
+			border-radius: 12px;
+			max-width: 85%;
+			font-size: .9rem;
+			line-height: 1.5;
+			animation: fadeUp .3s var(--tr);
+			word-wrap: break-word
+		}
+
+		.msg.user {
+			align-self: flex-end;
+			background: rgba(255, 255, 255, .08);
+			border: 1px solid var(--border);
+			color: #fff
+		}
+
+		.msg.ai {
+			align-self: flex-start;
+			background: rgba(255, 255, 255, .03);
+			border: 1px solid var(--border);
+			color: var(--t2)
+		}
+
+		.msg.err {
+			color: #f66;
+			border-color: rgba(255, 80, 80, .2)
+		}
+
+		.msg img.msg-image {
+			max-width: 200px;
+			max-height: 200px;
+			border-radius: 10px;
+			margin-bottom: 8px;
+			border: 1px solid var(--border);
+		}
+
+		.chat-input {
+			display: flex;
+			gap: 8px;
+			padding-top: 12px;
+			border-top: 1px solid var(--border)
+		}
+
+		.chat-input input {
+			flex: 1;
+			padding: 12px 16px;
+			border-radius: 10px;
+			border: 1px solid var(--border);
+			background: var(--card);
+			color: #fff;
+			font: .9rem 'Inter', sans-serif;
+			outline: 0
+		}
+
+		.chat-input button {
+			padding: 12px 24px;
+			border-radius: 10px;
+			border: 0;
+			background: #fff;
+			color: #000;
+			font: 600 .85rem/1 'Inter', sans-serif;
+			cursor: pointer;
+			transition: all .2s
+		}
+
+		.chat-input button:hover {
+			background: #ddd
+		}
+
+		.model-info {
+			color: var(--t3);
+			font-size: .75rem;
+			margin-top: 4px;
+			padding: 0 4px;
+		}
+
+		/* Image preview */
+		.image-preview-container {
+			display: none;
+			align-items: center;
+			gap: 10px;
+			padding: 8px 12px;
+			background: var(--card);
+			border-radius: 10px;
+			margin-bottom: 8px;
+			border: 1px solid var(--border);
+		}
+
+		.image-preview-container.active {
+			display: flex;
+		}
+
+		.image-preview-container img {
+			width: 50px;
+			height: 50px;
+			object-fit: cover;
+			border-radius: 6px;
+		}
+
+		.image-preview-container .preview-info {
+			font-size: 0.75rem;
+			color: var(--t3);
+			flex: 1;
+		}
+
+		.image-preview-container .preview-remove {
+			background: transparent;
+			border: 1px solid var(--border);
+			color: var(--t3);
+			padding: 4px 8px;
+			border-radius: 6px;
+			cursor: pointer;
+			font-size: 0.8rem;
+		}
+
+		/* Custom Select */
+		.custom-select {
+			position: relative;
+			display: inline-block;
+			min-width: 200px;
+			max-width: 300px;
+			user-select: none;
+		}
+
+		.custom-select-trigger {
+			padding: 10px 14px;
+			border-radius: 10px;
+			border: 1px solid var(--border);
+			background: var(--card);
+			color: #fff;
+			font: .85rem 'Inter', sans-serif;
+			cursor: pointer;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.custom-select-trigger img {
+			width: 18px;
+			height: 18px;
+			border-radius: 2px;
+		}
+
+		.custom-select-trigger::after {
+			content: '▼';
+			font-size: 0.7rem;
+			color: var(--t3);
+		}
+
+		.custom-options {
+			position: absolute;
+			top: 100%;
+			left: 0;
+			right: 0;
+			margin-top: 4px;
+			background: rgba(15, 15, 15, 0.98);
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			backdrop-filter: blur(20px);
+			opacity: 0;
+			pointer-events: none;
+			transition: all 0.2s;
+			z-index: 100;
+			overflow: hidden;
+			max-height: 300px;
+			overflow-y: auto;
+		}
+
+		.custom-select.open .custom-options {
+			opacity: 1;
+			pointer-events: all;
+		}
+
+		.custom-option {
+			padding: 10px 14px;
+			color: var(--t2);
+			font: .85rem 'Inter', sans-serif;
+			cursor: pointer;
+			transition: all 0.2s;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.custom-option img {
+			width: 18px;
+			height: 18px;
+			border-radius: 2px;
+		}
+
+		.custom-option:hover {
+			background: rgba(255, 255, 255, 0.08);
+			color: #fff;
+		}
+
+		.custom-option.selected {
+			color: #fff;
+			background: rgba(255, 255, 255, 0.04);
+		}
+
+		.custom-option .model-desc {
+			font-size: .7rem;
+			color: var(--t3);
+			margin-left: auto;
+		}
+
+		/* Particles */
+		#pcanvas {
+			position: fixed;
+			inset: 0;
+			z-index: -1;
+			pointer-events: none;
+			opacity: .4
+		}
+
+		/* Toast */
+		.toast {
+			position: fixed;
+			bottom: 30px;
+			left: 50%;
+			transform: translateX(-50%);
+			background: rgba(20, 20, 20, .95);
+			color: #fff;
+			padding: 10px 24px;
+			border-radius: 30px;
+			z-index: 9999;
+			font: 500 .85rem/1 'Inter', sans-serif;
+			border: 1px solid var(--border);
+			backdrop-filter: blur(12px);
+			animation: toastIn .3s, toastOut .3s 1.5s forwards;
+			pointer-events: none
+		}
+
+		@keyframes toastIn {
+			from {
+				opacity: 0;
+				transform: translateX(-50%) translateY(16px)
+			}
+
+			to {
+				opacity: 1;
+				transform: translateX(-50%) translateY(0)
+			}
+		}
+
+		@keyframes toastOut {
+			to {
+				opacity: 0;
+				transform: translateX(-50%) translateY(-10px)
+			}
+		}
+
+		@media(max-width:768px) {
+			.brand {
+				font-size: 2.5rem
+			}
+
+			.card {
+				width: 130px;
+				padding: 12px 8px
+			}
+
+			.card img {
+				width: 50px;
+				height: 50px
+			}
+
+			.cloud-game-card {
+				width: 150px;
+			}
+
+			.cloud-game-card img {
+				height: 200px;
+			}
+
+			.tab {
+				padding: 0 8px;
+				font-size: .68rem
+			}
+
+			.custom-select {
+				min-width: 160px;
+			}
+
+			.btn-modal {
+				min-width: 120px;
+				padding: 12px 16px;
+				font-size: 0.82rem;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<canvas id="pcanvas"></canvas>
+
+	<!-- Proxy Notice -->
+	<div class="proxy-notice" id="proxyNotice">🌐 Browsing via Proxy</div>
+
+	<div class="tabs">
+		<button class="tab active" onclick="showTab('home')">Home<span class="theme-badge">💧</span></button>
+		<button class="tab" onclick="showTab('games')">Games</button>
+		<button class="tab" onclick="showTab('cloud')">Cloud</button>
+		<button class="tab" onclick="showTab('apps')">Apps</button>
+		<button class="tab" onclick="showTab('flash')">Flash</button>
+		<button class="tab" onclick="showTab('ai')">AI Chat</button>
+	</div>
+
+	<div id="home" class="panel active">
+		<div class="home-center">
+			<div class="brand">quantum.</div>
+			<div class="search-box">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="11" cy="11" r="8" />
+					<path d="m21 21-4.3-4.3" />
+				</svg>
+
+<!-- AFTER (fixed): -->
+<input
+    id="search-bar"
+    type="text"
+    placeholder="Search the web..."
+    onkeydown="if(event.key==='Enter') searchWeb()">
+</div>  <!-- closes .search-box -->
+			<div class="cat-btns">
+				<button class="cat-btn" onclick="showTab('games')">Games</button>
+				<button class="cat-btn" onclick="showTab('cloud')">Cloud Gaming</button>
+				<button class="cat-btn" onclick="showTab('apps')">Apps</button>
+				<button class="cat-btn" onclick="showTab('flash')">Flash</button>
+				<button class="cat-btn" onclick="showTab('ai')">AI Chat</button>
+			</div>
+			<button class="blank-btn" onclick="openBlank()">Open in about:blank</button>
+			<div class="home-footer">End-to-end encrypted</div>
+		</div>
+	</div>
+
+	<div id="games" class="panel">
+		<button class="back-btn" onclick="showTab('home')">← Back</button>
+		<div class="section-title">🎮 Games</div>
+		<div class="grid" id="games-container"></div>
+	</div>
+
+	<div id="cloud" class="panel">
+		<button class="back-btn" onclick="showTab('home')">← Back</button>
+		<div class="section-title">☁️ Cloud Gaming</div>
+		<div class="cloud-search">
+			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="11" cy="11" r="8" />
+				<path d="m21 21-4.3-4.3" />
+			</svg>
+			<input type="text" id="cloud-search" placeholder="Search cloud games..." oninput="filterCloudGames()">
+		</div>
+		<div class="cloud-count" id="cloud-count"></div>
+		<div class="grid" id="cloud-container"></div>
+	</div>
+
+	<div id="apps" class="panel">
+		<button class="back-btn" onclick="showTab('home')">← Back</button>
+		<div class="section-title">📱 Apps</div>
+		<div class="grid" id="apps-container"></div>
+	</div>
+
+	<div id="flash" class="panel">
+		<button class="back-btn" onclick="showTab('home')">← Back</button>
+		<div class="section-title">⚡ Flash Games</div>
+		<div class="grid" id="flash-container"></div>
+	</div>
+
+	<div id="unblockers" class="panel">
+		<button class="back-btn" onclick="showTab('home')">← Back</button>
+		<div class="section-title">🔓 Unblockers</div>
+		<div class="grid" id="unblockers-container"></div>
+	</div>
+
+	<div id="ai" class="panel">
+		<button class="back-btn" onclick="showTab('home')">← Back</button>
+		<div class="section-title">🤖 AI Chat</div>
+		<div class="chat-wrap">
+			<div class="chat-top">
+				<div class="custom-select" id="ai-model-select">
+					<div class="custom-select-trigger">
+						<img src="https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://openrouter.ai/&size=256"
+							onerror="this.style.display='none'">
+						<span>Owl Alpha</span>
+					</div>
+					<div class="custom-options" id="model-options"></div>
+				</div>
+				<input type="hidden" id="ai-model" value="openrouter/auto">
+			</div>
+			<div class="image-preview-container" id="imagePreview">
+				<img id="previewImg" src="" alt="Preview">
+				<span class="preview-info" id="previewInfo"></span>
+				<button class="preview-remove" onclick="removePendingImage()">✕</button>
+			</div>
+			<div class="chat-msgs" id="chat-msgs"></div>
+			<div class="chat-input">
+				<input id="chat-in" type="text" placeholder="Type a message or paste an image..."
+					onkeydown="if(event.key==='Enter')sendChat()">
+				<button onclick="sendChat()">Send</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Game Window -->
+	<div id="game-window">
+		<h3 id="game-title" style="color:#fff;margin-bottom:12px"></h3>
+		<iframe id="game-frame" allow="autoplay;fullscreen;clipboard-write"></iframe>
+		<div class="g-controls">
+			<button onclick="toggleFs()">⛶ Fullscreen</button>
+			<button onclick="closeGame()">✕ Close</button>
+		</div>
+	</div>
+
+	<!-- Modal for Proxy/Direct choice -->
+	<div class="modal-overlay" id="cloudGameModal">
+		<div class="modal-box">
+			<img class="modal-game-img" id="modalGameImg" src="" alt="Game">
+			<h2 id="modalGameTitle">Open Game</h2>
+			<p class="modal-game-name" id="modalGameName"></p>
+			<div class="modal-buttons">
+				<button class="btn-modal btn-modal-white" id="btnProxyOpen">
+					🔒 Open in Proxy
+				</button>
+				<button class="btn-modal btn-modal-dark" id="btnDirectOpen">
+					🌐 Open Directly
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Proxy panel (hidden but used for navigation) -->
+	<div id="proxy" class="panel">
+		<button class="back-btn" onclick="showTab('home')">← Back</button>
+		<div class="browser-tabs-container">
+			<div class="browser-tabs" id="browser-tabs">
+				<div class="browser-tab active" data-id="tab-1" onclick="switchBrowserTab('tab-1')">
+					<img src="https://duckduckgo.com/favicon.ico" class="b-tab-icon"
+						onerror="this.src='https://duckduckgo.com/favicon.ico'">
+					<span class="b-tab-title">New Tab</span>
+					<div class="b-tab-close" onclick="closeBrowserTab(event, 'tab-1')">×</div>
+				</div>
+			</div>
+			<button class="new-tab-btn" onclick="addBrowserTab()">+</button>
+		</div>
+		<div class="proxy-status" id="proxy-status" style="display:none">Initializing proxy...</div>
+		<form onsubmit="event.preventDefault(); proxyNav();">
+			<div class="proxy-bar">
+				<input id="proxy-url" type="text" placeholder="Search DuckDuckGo or enter URL..." spellcheck="false">
+				<button type="submit">Go</button>
+			</div>
+		</form>
+		<div class="proxy-nav">
+			<button type="button" onclick="proxyBack()" title="Back">‹</button>
+			<button type="button" onclick="proxyFwd()" title="Forward">›</button>
+			<button type="button" onclick="proxyReload()" title="Reload">↻</button>
+			<button type="button" onclick="proxyFullscreen()" title="Fullscreen"
+				style="margin-left:auto; width:auto; padding:0 12px; font-size:0.85rem; font-weight:500;">⛶
+				Fullscreen</button>
+		</div>
+		<div id="proxy-frames-container">
+			<div class="proxy-frame-wrap active" id="frame-wrap-tab-1">
+				<iframe id="proxy-frame-tab-1"></iframe>
+			</div>
+		</div>
+	</div>
+
+	<script type="module" src="https://intelligent-dedication-production-f8d8.up.railway.app/src/proxy-init.ts"></script>
+	<script>
+		// Built-in OpenRouter API Key
+		const OPENROUTER_API_KEY = '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';
+
+		// OpenRouter Models Configuration
+		const AI_MODELS = [
+			{ id: 'openrouter/owl-alpha', name: 'Owl Alpha', provider: 'OpenRouter', icon: 'https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://openrouter.ai/&size=256', context: '1.05M', free: true, description: 'High-performance foundation model for agentic workloads' },
+			{ id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron 3 Super', provider: 'NVIDIA', icon: 'https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://nvidia.com/&size=256', context: '1M', free: true, description: '120B MoE model activating 12B parameters' },
+			{ id: 'openai/gpt-oss-120b:free', name: 'GPT-OSS 120B', provider: 'OpenAI', icon: 'https://openrouter.ai/images/icons/OpenAI.svg', context: '131K', free: true, description: 'Open-weight 117B MoE model' },
+			{ id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', name: 'Nemotron Omni', provider: 'NVIDIA', icon: 'https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://nvidia.com/&size=256', context: '256K', free: true, description: 'Multimodal vision model' }
+		];
+
+		// Cloud Games Data (abbreviated for space - full list in your original)
+		const cloudGames = [
+			{ id: 1027, name: "Tomb Raider - Definitive Edition", img: "https://download-oss.raccoongame.com/uploads/image/20260515/20260515162225786.jpg" },
+			{ id: 1026, name: "Cricket 26", img: "https://download-oss.raccoongame.com/uploads/image/20260515/20260515152713918.jpg" },
+			{ id: 1025, name: "Hollow Knight: Silksong", img: "https://download-oss.raccoongame.com/uploads/image/20260508/20260508163354446.jpg" },
+			{ id: 1021, name: "Little Nightmares III", img: "https://download-oss.raccoongame.com/uploads/image/20260515/20260515162908395.jpg" },
+			{ id: 1018, name: "SAND LAND", img: "https://download-oss.raccoongame.com/uploads/image/20250903/20250903105440952.png" },
+			{ id: 1016, name: "X-Plane 11", img: "https://download-oss.raccoongame.com/uploads/image/20250902/2025090217335483.jpg" },
+			{ id: 1015, name: "GUILTY GEAR -STRIVE-", img: "https://download-oss.raccoongame.com/uploads/image/20250901/20250901143139167.jpg" },
+			{ id: 1013, name: "Clair Obscur: Expedition 33", img: "https://download-oss.raccoongame.com/uploads/image/20260515/20260515162820447.jpg" },
+			{ id: 1003, name: "JDM: Japanese Drift Master", img: "https://download-oss.raccoongame.com/uploads/image/20250930/20250930120300208.jpg" },
+			{ id: 1002, name: "The First Berserker: Khazan", img: "https://download-oss.raccoongame.com/uploads/image/20250627/20250627115659712.png" },
+			{ id: 1001, name: "Blue Prince", img: "https://download-oss.raccoongame.com/uploads/image/20250627/20250627112123936.png" },
+			{ id: 999, name: "Only Up", img: "https://download-oss.raccoongame.com/uploads/image/20250613/20250613113813585.jpg" },
+			{ id: 998, name: "Schedule 1", img: "https://download-oss.raccoongame.com/uploads/image/20250612/2025061214262743.png" },
+			{ id: 997, name: "WWE 2K25", img: "https://download-oss.raccoongame.com/uploads/image/20260407/20260407163551925.jpg" },
+			{ id: 996, name: "RuneScape: Dragonwilds", img: "https://download-oss.raccoongame.com/uploads/image/20250530/20250530162530751.png" },
+			{ id: 995, name: "Cities: Skylines 2", img: "https://download-oss.raccoongame.com/uploads/image/20250530/2025053015334968.png" },
+			{ id: 990, name: "inZOI", img: "https://download-oss.raccoongame.com/uploads/image/20250527/20250527115852814.jpg" },
+			{ id: 988, name: "Horizon Zero Dawn", img: "https://download-oss.raccoongame.com/uploads/image/20250425/20250425162419325.png" },
+			{ id: 983, name: "The Last of Us™ Part II", img: "https://download-oss.raccoongame.com/uploads/image/20260408/20260408171835296.jpg" },
+			{ id: 978, name: "Ghost of Tsushima", img: "https://download-oss.raccoongame.com/uploads/image/20250527/20250527115454441.jpg" },
+			{ id: 963, name: "God of War: Ragnarök", img: "https://download-oss.raccoongame.com/uploads/image/20251218/20251218002037369.jpg" },
+			{ id: 957, name: "FIFA23", img: "https://download-oss.raccoongame.com/uploads/image/20240527/20240527172935321.png" },
+			{ id: 947, name: "Hades II", img: "https://download-oss.raccoongame.com/uploads/image/20240527/20240527161909639.jpg" },
+			{ id: 904, name: "Tekken 8", img: "https://download-oss.raccoongame.com/uploads/image/20250402/20250402141624654.jpg" },
+			{ id: 890, name: "Halo: The Master Chief Collection", img: "https://download-oss.raccoongame.com/uploads/image/20241217/20241217183311663.jpg" },
+			{ id: 827, name: "Alan Wake 2", img: "https://download-oss.raccoongame.com/uploads/image/20241108/20241108164656767.jpg" },
+			{ id: 765, name: "The Last of Us™ Part I", img: "https://download-oss.raccoongame.com/uploads/image/20260408/20260408152339290.jpg" },
+			{ id: 749, name: "Resident Evil 4", img: "https://download-oss.raccoongame.com/uploads/image/20260515/202605151629306.jpg" },
+			{ id: 697, name: "Hogwarts Legacy", img: "https://download-oss.raccoongame.com/uploads/image/20250930/20250930145508266.jpg" },
+			{ id: 656, name: "Marvel's Spider-Man: Miles Morales", img: "https://download-oss.raccoongame.com/uploads/image/20251218/20251218002310690.jpg" },
+			{ id: 625, name: "Marvel's Spider-Man Remastered", img: "https://download-oss.raccoongame.com/uploads/image/20250930/20250930114154630.jpg" },
+			{ id: 621, name: "Forza Horizon 5", img: "https://download-oss.raccoongame.com/uploads/image/20260305/20260305115627492.jpg" },
+			{ id: 620, name: "Stray", img: "https://download-oss.raccoongame.com/uploads/image/20250613/20250613153035148.jpg" },
+			{ id: 618, name: "Pokémon Legends: Arceus", img: "https://download-oss.raccoongame.com/uploads/image/20260122/20260122010947516.png" },
+			{ id: 610, name: "GhostWire: Tokyo", img: "https://download-oss.raccoongame.com/uploads/image/20250103/20250103180827822.jpg" },
+			{ id: 604, name: "THE KING OF FIGHTERS XV", img: "https://download-oss.raccoongame.com/uploads/image/20250627/20250627181815843.png" },
+			{ id: 603, name: "Hitman 3", img: "https://download-oss.raccoongame.com/uploads/image/20250815/2025081515231470.jpg" },
+			{ id: 600, name: "Red Dead Redemption 2", img: "https://download-oss.raccoongame.com/uploads/image/20260407/20260407165500251.jpg" },
+			{ id: 598, name: "Elden Ring", img: "https://download-oss.raccoongame.com/uploads/image/20260515/2026051516303039.jpg" },
+			{ id: 587, name: "God of War 4", img: "https://download-oss.raccoongame.com/uploads/image/20250402/20250402141418448.jpg" },
+			{ id: 571, name: "Grand Theft Auto: Vice City", img: "https://download-oss.raccoongame.com/uploads/image/20250627/20250627144431471.jpg" },
+			{ id: 570, name: "Grand Theft Auto: San Andreas", img: "https://download-oss.raccoongame.com/uploads/image/20260515/20260515162949699.jpg" },
+			{ id: 569, name: "Grand Theft Auto III", img: "https://download-oss.raccoongame.com/uploads/image/20250627/20250627191826951.png" },
+			{ id: 568, name: "Zelda: Breath of the Wild", img: "https://download-oss.raccoongame.com/uploads/image/20211202/20211202161034296.webp" },
+			{ id: 509, name: "Assassin's Creed: Black Flag", img: "https://download-oss.raccoongame.com/uploads/image/20230420/20230420211652688.jpg" },
+			{ id: 449, name: "Days Gone", img: "https://download-oss.raccoongame.com/uploads/image/20210826/20210826165254727.webp" },
+			{ id: 445, name: "Forza Horizon 4", img: "https://download-oss.raccoongame.com/uploads/image/20210819/20210819150927774.webp" },
+			{ id: 415, name: "Doom Eternal", img: "https://download-oss.raccoongame.com/uploads/image/20260121/20260121175158608.png" },
+			{ id: 398, name: "Control", img: "https://download-oss.raccoongame.com/uploads/image/20260121/20260121174633373.png" },
+			{ id: 390, name: "Halo: Reach", img: "https://download-oss.raccoongame.com/uploads/image/20260121/2026012117405271.png" },
+			{ id: 314, name: "Fallout 4", img: "https://download-oss.raccoongame.com/uploads/image/20210423/20210423120714547.webp" },
+			{ id: 305, name: "It Takes Two", img: "https://download-oss.raccoongame.com/uploads/image/20230323/20230323122354541.png" },
+			{ id: 300, name: "Call of Duty: WWII", img: "https://download-oss.raccoongame.com/uploads/image/20260121/202601211709089.png" },
+			{ id: 209, name: "Grand Theft Auto V", img: "https://download-oss.raccoongame.com/uploads/image/20260304/20260304175808508.jpg" },
+			{ id: 207, name: "Mafia: Definitive Edition", img: "https://download-oss.raccoongame.com/uploads/image/20250613/20250613152910794.jpg" },
+			{ id: 117, name: "Cyberpunk 2077", img: "https://download-oss.raccoongame.com/uploads/image/20260410/20260410170557349.jpg" },
+			{ id: 109, name: "Batman: Arkham Knight", img: "https://download-oss.raccoongame.com/uploads/image/20260408/20260408115021808.jpg" },
+			{ id: 100, name: "Stardew Valley", img: "https://download-oss.raccoongame.com/uploads/image/20260407/20260407173529946.jpg" },
+			{ id: 98, name: "Sekiro: Shadows Die Twice", img: "https://download-oss.raccoongame.com/uploads/image/20230322/20230322195617171.jpg" },
+			{ id: 83, name: "Resident Evil 7: Biohazard", img: "https://download-oss.raccoongame.com/uploads/image/20250815/20250815172959772.jpg" },
+			{ id: 78, name: "Titanfall 2", img: "https://download-oss.raccoongame.com/uploads/image/20210910/20210910111018307.webp" },
+			{ id: 74, name: "Watch Dogs 2", img: "https://download-oss.raccoongame.com/uploads/image/20260416/20260416114647944.jpg" },
+			{ id: 66, name: "Cuphead", img: "https://download-oss.raccoongame.com/uploads/image/20260121/20260121145749473.png" },
+			{ id: 56, name: "Rise of the Tomb Raider", img: "https://download-oss.raccoongame.com/uploads/image/20250815/20250815162338597.jpg" },
+			{ id: 47, name: "Hades", img: "https://download-oss.raccoongame.com/uploads/image/20260121/20260121144523682.png" },
+			{ id: 41, name: "Witcher 3", img: "https://download-oss.raccoongame.com/uploads/image/20230322/20230322194948461.jpg" },
+			{ id: 38, name: "NieR:Automata", img: "https://download-oss.raccoongame.com/uploads/image/20250613/2025061315324568.jpg" },
+			{ id: 32, name: "Dragon Ball Z: Kakarot", img: "https://download-oss.raccoongame.com/images/cloudgame/img/phone300_public/gamedetails/cg0020050/a004_img_recommend_1.webp" },
+			{ id: 30, name: "Assassin's Creed: Odyssey", img: "https://download-oss.raccoongame.com/uploads/image/20241119/20241119150446640.jpg" },
+			{ id: 25, name: "Resident Evil 2: Remake", img: "https://download-oss.raccoongame.com/images/cloudgame/img/phone300_public/gamedetails/cg0020017/a004_img_recommend_1.webp" },
+			{ id: 24, name: "Devil May Cry 5", img: "https://download-oss.raccoongame.com/uploads/image/20250815/20250815173456114.jpg" },
+			{ id: 21, name: "Final Fantasy VII Remake", img: "https://download-oss.raccoongame.com/uploads/image/20260429/20260429155011461.jpg" },
+			{ id: 10, name: "Baldur's Gate 3", img: "https://download-oss.raccoongame.com/uploads/image/20260410/20260410173748437.jpg" },
+			{ id: 6, name: "Dead Cells", img: "https://download-oss.raccoongame.com/uploads/image/20251218/20251218002204661.jpg" },
+			{ id: 2, name: "Hollow Knight", img: "https://download-oss.raccoongame.com/uploads/image/20250331/20250331165157210.jpg" }
+		];
+
+		let chatHist = [];
+		let currentModel = AI_MODELS[0];
+		let isLiquidGlass = false;
+		let currentCloudGame = null;
+
+		// Image handling
+		let pendingImageData = null;
+		let pendingImageType = null;
+
+		// Custom Dropdown for AI Models
+		function initModelSelect() {
+			const optionsContainer = document.getElementById('model-options');
+			optionsContainer.innerHTML = AI_MODELS.map(model => `
+                <div class="custom-option${model.id === currentModel.id ? ' selected' : ''}" 
+                     data-value="${model.id}">
+                    <img src="${model.icon}" onerror="this.style.display='none'" width="18" height="18">
+                    <span>${model.name}</span>
+                    <span class="model-desc">${model.context}</span>
+                </div>
+            `).join('');
+			updateTriggerDisplay();
+			optionsContainer.querySelectorAll('.custom-option').forEach(opt => {
+				opt.addEventListener('click', function () {
+					const value = this.getAttribute('data-value');
+					currentModel = AI_MODELS.find(m => m.id === value) || AI_MODELS[0];
+					optionsContainer.querySelectorAll('.custom-option').forEach(o => o.classList.remove('selected'));
+					this.classList.add('selected');
+					document.querySelector('#ai-model-select').classList.remove('open');
+					updateTriggerDisplay();
+				});
+			});
+		}
+
+		function updateTriggerDisplay() {
+			const trigger = document.querySelector('#ai-model-select .custom-select-trigger');
+			trigger.innerHTML = `
+                <img src="${currentModel.icon}" onerror="this.style.display='none'" width="18" height="18">
+                <span>${currentModel.name}</span>
+            `;
+		}
+
+		document.querySelector('#ai-model-select .custom-select-trigger').addEventListener('click', function (e) {
+			e.stopPropagation();
+			this.parentElement.classList.toggle('open');
+		});
+		document.addEventListener('click', function (e) {
+			if (!e.target.closest('.custom-select')) {
+				document.querySelector('.custom-select').classList.remove('open');
+			}
+		});
+
+		// Particles
+		const cv = document.getElementById('pcanvas'), cx = cv.getContext('2d'); let pts = [];
+		function rsz() { cv.width = innerWidth; cv.height = innerHeight } rsz(); addEventListener('resize', rsz);
+		class P {
+			constructor() { this.r() } r() { this.x = Math.random() * cv.width; this.y = -10; this.s = Math.random() * 2 + .5; this.sy = Math.random() * .6 + .2; this.sx = (Math.random() - .5) * .3; this.o = Math.random() * .5 + .15 }
+			u() { this.y += this.sy; this.x += this.sx; if (this.y > cv.height + 10) { this.r(); this.y = -10 } }
+			d() { cx.beginPath(); cx.arc(this.x, this.y, this.s, 0, Math.PI * 2); cx.fillStyle = `rgba(255,255,255,${this.o})`; cx.fill() }
+		}
+		for (let i = 0; i < 60; i++) { const p = new P(); p.y = Math.random() * cv.height; pts.push(p) }
+		(function anim() { cx.clearRect(0, 0, cv.width, cv.height); pts.forEach(p => { p.u(); p.d() }); requestAnimationFrame(anim) })();
+
+		// Tabs
+		let curTab = 'home', curSection = null;
+		function showTab(id) {
+			document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+			document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+			const target = document.getElementById(id);
+			if (target) target.classList.add('active');
+			const tabBtn = document.querySelector(`.tab[onclick*="'${id}'"]`);
+			if (tabBtn) tabBtn.classList.add('active');
+			curTab = id;
+			closeGame();
+			if (['games', 'apps', 'flash', 'unblockers', 'cloud'].includes(id)) curSection = id;
+			if (id === 'proxy') initProxy();
+			scrollTo({ top: 0, behavior: 'smooth' });
+		}
+
+		function toast(m) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = m; document.body.appendChild(d); setTimeout(() => d.remove(), 2000) }
+
+		function genIcon(n) {
+			const c = document.createElement('canvas'); c.width = 80; c.height = 80; const x = c.getContext('2d');
+			const g = x.createLinearGradient(0, 0, 80, 80); g.addColorStop(0, '#333'); g.addColorStop(1, '#111');
+			x.fillStyle = g; x.beginPath(); x.roundRect(0, 0, 80, 80, 12); x.fill();
+			x.fillStyle = '#fff'; x.font = 'bold 32px Inter,sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(n[0].toUpperCase(), 40, 40);
+			return c.toDataURL()
+		}
+
+		function renderItems(cid, items) {
+			const c = document.getElementById(cid);
+			if (!c) return;
+			c.innerHTML = '';
+			items.forEach(it => {
+				const d = document.createElement('div'); d.className = 'card'; d.onclick = () => openItem(it);
+				const img = document.createElement('img'); img.src = genIcon(it.name); img.alt = it.name; img.loading = 'lazy';
+				const sp = document.createElement('span'); sp.textContent = it.name;
+				d.append(img, sp); c.appendChild(d)
+			})
+		}
+
+		// Render Cloud Games
+		function renderCloudGames(filter = '') {
+			const container = document.getElementById('cloud-container');
+			if (!container) return;
+			const filtered = filter ? cloudGames.filter(g => g.name.toLowerCase().includes(filter.toLowerCase())) : cloudGames;
+			document.getElementById('cloud-count').textContent = `Showing ${filtered.length} of ${cloudGames.length} games`;
+			container.innerHTML = '';
+			filtered.forEach(game => {
+				const card = document.createElement('div');
+				card.className = 'cloud-game-card';
+				card.onclick = () => showCloudGameModal(game);
+				const img = document.createElement('img');
+				img.src = game.img;
+				img.alt = game.name;
+				img.loading = 'lazy';
+				img.onerror = function () { this.src = genIcon(game.name); };
+				const title = document.createElement('div');
+				title.className = 'cloud-game-title';
+				title.textContent = game.name;
+				card.append(img, title);
+				container.appendChild(card);
+			});
+		}
+
+		function filterCloudGames() {
+			renderCloudGames(document.getElementById('cloud-search').value);
+		}
+
+		// Show modal with White (Proxy) and Dark (Direct) buttons
+		function showCloudGameModal(game) {
+			currentCloudGame = game;
+			document.getElementById('modalGameImg').src = game.img;
+			document.getElementById('modalGameTitle').textContent = 'Open Game';
+			document.getElementById('modalGameName').textContent = game.name;
+			document.getElementById('cloudGameModal').classList.add('active');
+		}
+
+		function hideCloudGameModal() {
+			document.getElementById('cloudGameModal').classList.remove('active');
+			currentCloudGame = null;
+		}
+
+		// Open in Proxy (White button - left)
+		function openCloudInProxy() {
+			if (!currentCloudGame) return;
+			const url = `https://www.raccoongame.com/wap/dist/#/platform/cloudgame/gamedetail?gid=${currentCloudGame.id}`;
+			hideCloudGameModal();
+
+			// Navigate to proxy tab and load the URL
+			showTab('proxy');
+
+			// Wait for proxy to be ready, then navigate
+			const waitForProxy = () => {
+				if (proxyReady && ctrlInstance) {
+					document.getElementById('proxy-url').value = url;
+					// Create a new tab or use current active tab
+					addBrowserTab();
+					const lastTab = browserTabs[browserTabs.length - 1];
+					if (lastTab && lastTab.frame) {
+						lastTab.frame.go(url);
+						lastTab.url = url;
+						lastTab.title = currentCloudGame.name;
+						switchBrowserTab(lastTab.id);
+						renderBrowserTabs();
+					}
+					showProxyNotice();
+				} else {
+					setTimeout(waitForProxy, 200);
+				}
+			};
+			waitForProxy();
+		}
+
+		// Open Directly (Dark button - right)
+		function openCloudDirectly() {
+			if (!currentCloudGame) return;
+			const url = `https://www.raccoongame.com/wap/dist/#/platform/cloudgame/gamedetail?gid=${currentCloudGame.id}`;
+			window.open(url, '_blank');
+			hideCloudGameModal();
+		}
+
+		function showProxyNotice() {
+			const notice = document.getElementById('proxyNotice');
+			notice.classList.add('visible');
+			setTimeout(() => notice.classList.remove('visible'), 3000);
+		}
+
+		function openItem(it) {
+			if (curSection) {
+				const container = document.getElementById(curSection + '-container');
+				if (container) container.style.display = 'none';
+			}
+			document.getElementById('game-title').textContent = it.name;
+			document.getElementById('game-frame').src = it.url;
+			document.getElementById('game-window').style.display = 'flex';
+			document.getElementById('game-window').scrollIntoView({ behavior: 'smooth', block: 'center' })
+		}
+
+		function closeGame() {
+			const gw = document.getElementById('game-window');
+			gw.style.display = 'none';
+			document.getElementById('game-frame').src = '';
+			if (curSection) {
+				const c = document.getElementById(curSection + '-container');
+				if (c) c.style.display = 'flex';
+			}
+		}
+		function toggleFs() { const f = document.getElementById('game-frame'); if (f.requestFullscreen) f.requestFullscreen(); else if (f.webkitRequestFullscreen) f.webkitRequestFullscreen() }
+
+	function filterItems() {
+    const q = document.getElementById('search-bar').value.toLowerCase();
+
+    if (!curSection) return;
+
+    const container = document.getElementById(`${curSection}-container`);
+    if (!container) return;
+
+    container.querySelectorAll('.card').forEach(card => {
+        const span = card.querySelector('span');
+        const text = span ? span.textContent.toLowerCase() : '';
+
+        card.style.display = text.includes(q) ? 'flex' : 'none';
+    });
+}
+function searchWeb() {
+    let url = document.getElementById('search-bar').value.trim();
+    if (!url) return;
+
+    if (!/^https?:\/\//i.test(url)) {
+        if (url.includes('.')) {
+            url = 'https://' + url;
+        } else {
+            url = 'https://duckduckgo.com/?q=' + encodeURIComponent(url);
+        }
+    }
+
+    showTab('proxy');
+
+    const wait = () => {
+        if (proxyReady && ctrlInstance) {
+            addBrowserTab();
+
+            const tab = browserTabs[browserTabs.length - 1];
+
+            // 🔥 IMPORTANT: wait until frame exists
+            const ensureFrame = () => {
+                if (tab.frame) {
+                    tab.frame.go(url);
+                    tab.url = url;
+                    tab.title = url;
+                    switchBrowserTab(tab.id);
+                    renderBrowserTabs();
+                } else {
+                    setTimeout(ensureFrame, 50);
+                }
+            };
+
+            ensureFrame();
+        } else {
+            setTimeout(wait, 100);
+        }
+    };
+
+    wait();
+}
+		function openBlank() {
+			const w = window.open('about:blank', '_blank'); if (!w) { alert('Allow popups'); return }
+			w.document.open(); w.document.write(`<!DOCTYPE html><html><head><title>Sparx Maths</title><link rel="icon" href="https://intercom-help.eu/sparx-maths-help-centre/assets/favicon"><style>*{margin:0;padding:0}html,body{height:100%;overflow:hidden}iframe{width:100%;height:100%;border:0}</style></head><body><iframe src="${location.href}"></iframe></body></html>`);
+			w.document.close(); setTimeout(() => location.replace('https://www.sparxmaths.uk/'), 100)
+		}
+
+
+		document.addEventListener('keydown', (e) => {
+			if ((e.key === 't' || e.key === 'T') && (document.activeElement === document.body || document.activeElement === null)) {
+				e.preventDefault();
+				toggleLiquidGlass();
+				toast(isLiquidGlass ? '💧 Liquid Glass ON' : 'Liquid Glass OFF');
+			}
+			if (e.key === 'Escape') hideCloudGameModal();
+		});
+		if (localStorage.getItem('liquidGlass') === 'true') {
+			isLiquidGlass = true;
+			document.body.classList.add('liquid-glass');
+		}
+
+		// Modal button handlers
+		document.getElementById('btnProxyOpen').addEventListener('click', openCloudInProxy);
+		document.getElementById('btnDirectOpen').addEventListener('click', openCloudDirectly);
+		document.getElementById('cloudGameModal').addEventListener('click', function (e) {
+			if (e.target === this) hideCloudGameModal();
+		});
+
+		// --- Image paste handling ---
+		document.getElementById('chat-in').addEventListener('paste', function (e) {
+			const items = e.clipboardData?.items;
+			if (!items) return;
+			for (let i = 0; i < items.length; i++) {
+				if (items[i].type.indexOf('image') !== -1) {
+					e.preventDefault();
+					const blob = items[i].getAsFile();
+					const reader = new FileReader();
+					reader.onload = function (ev) {
+						pendingImageData = ev.target.result.split(',')[1];
+						pendingImageType = blob.type;
+						// Show preview
+						const previewContainer = document.getElementById('imagePreview');
+						document.getElementById('previewImg').src = ev.target.result;
+						document.getElementById('previewInfo').textContent = blob.type + ' (' + (blob.size / 1024).toFixed(1) + ' KB)';
+						previewContainer.classList.add('active');
+					};
+					reader.readAsDataURL(blob);
+					break;
+				}
+			}
+		});
+
+		function removePendingImage() {
+			pendingImageData = null;
+			pendingImageType = null;
+			document.getElementById('imagePreview').classList.remove('active');
+			document.getElementById('previewImg').src = '';
+		}
+
+		// AI Chat (modified to support images)
+		async function sendChat() {
+			const inp = document.getElementById('chat-in');
+			const msg = inp.value.trim();
+			if (!msg && !pendingImageData) return;
+			inp.value = '';
+
+			// If image is present, switch to multimodal model
+			if (pendingImageData) {
+				const omniModel = AI_MODELS.find(m => m.id === 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free');
+				if (omniModel && currentModel.id !== omniModel.id) {
+					currentModel = omniModel;
+					updateTriggerDisplay();
+					// Update dropdown selection visually
+					document.querySelectorAll('.custom-option').forEach(o => {
+						o.classList.toggle('selected', o.getAttribute('data-value') === omniModel.id);
+					});
+					toast('🖼️ Switched to Nemotron Omni for vision');
+				}
+
+				// Build message for display
+				addMsgWithImage(msg || '', 'user', pendingImageData, pendingImageType);
+
+				// Build content for API
+				const userContent = [
+					{ type: 'image_url', image_url: { url: `data:${pendingImageType};base64,${pendingImageData}` } },
+					{ type: 'text', text: msg || '' }
+				];
+				chatHist.push({ role: 'user', content: userContent });
+
+				// Clear pending image
+				removePendingImage();
+			} else {
+				// Text-only message
+				addMsg(msg, 'user');
+				chatHist.push({ role: 'user', content: msg });
+			}
+
+			try {
+				const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'HTTP-Referer': window.location.origin,
+						'X-Title': 'Quantum AI Chat',
+						'Authorization': 'Bearer ' + OPENROUTER_API_KEY
+					},
+					body: JSON.stringify({ model: currentModel.id, messages: chatHist, max_tokens: 2048, temperature: 0.7 })
+				});
+				const data = await response.json();
+				if (data.error) throw new Error(data.error.message || 'API Error');
+				if (data.choices?.[0]) {
+					const reply = data.choices[0].message.content;
+					chatHist.push({ role: 'assistant', content: reply });
+					addMsg(reply, 'ai');
+				}
+			} catch (e) {
+				addMsg('Error: ' + e.message, 'ai err');
+			}
+		}
+
+		function addMsg(t, cls) {
+			const d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = t;
+			const c = document.getElementById('chat-msgs'); c.appendChild(d); c.scrollTop = c.scrollHeight;
+		}
+
+		function addMsgWithImage(text, cls, imageData, imageType) {
+			const d = document.createElement('div');
+			d.className = 'msg ' + cls;
+			const img = document.createElement('img');
+			img.src = `data:${imageType};base64,${imageData}`;
+			img.className = 'msg-image';
+			d.appendChild(img);
+			if (text) {
+				const span = document.createElement('span');
+				span.textContent = text;
+				d.appendChild(span);
+			}
+			const c = document.getElementById('chat-msgs'); c.appendChild(d); c.scrollTop = c.scrollHeight;
+		}
+
+		// Proxy variables (shared)
+		let proxyReady = false, ctrlInstance = null, proxyFrame = null;
+		let browserTabs = [{ id: 'tab-1', url: '', title: 'New Tab', frame: null, icon: null }];
+		let activeBrowserTabId = 'tab-1';
+		let tabCounter = 1;
+
+		function renderBrowserTabs() {
+			const container = document.getElementById('browser-tabs');
+			container.innerHTML = '';
+			browserTabs.forEach(tab => {
+				const isActive = tab.id === activeBrowserTabId ? 'active' : '';
+				let icon = tab.icon || (tab.url ? (new URL(tab.url).origin + '/favicon.ico') : 'https://duckduckgo.com/favicon.ico');
+				container.innerHTML += `<div class="browser-tab ${isActive}" onclick="switchBrowserTab('${tab.id}')">
+                    <img src="${icon}" class="b-tab-icon" onerror="this.src='https://duckduckgo.com/favicon.ico'">
+                    <span class="b-tab-title">${tab.title}</span>
+                    <div class="b-tab-close" onclick="closeBrowserTab(event, '${tab.id}')">×</div>
+                </div>`;
+			});
+		}
+
+		function switchBrowserTab(id) {
+			activeBrowserTabId = id;
+			renderBrowserTabs();
+			document.querySelectorAll('.proxy-frame-wrap').forEach(w => w.classList.remove('active'));
+			const activeWrap = document.getElementById('frame-wrap-' + id);
+			if (activeWrap) activeWrap.classList.add('active');
+			const activeTab = browserTabs.find(t => t.id === id);
+			if (activeTab) {
+				document.getElementById('proxy-url').value = activeTab.url || '';
+				proxyFrame = activeTab.frame;
+			}
+		}
+
+		function addBrowserTab() {
+			tabCounter++;
+			const newId = 'tab-' + tabCounter;
+			browserTabs.push({ id: newId, url: '', title: 'New Tab', frame: null, icon: null });
+			const container = document.getElementById('proxy-frames-container');
+			const wrap = document.createElement('div');
+			wrap.className = 'proxy-frame-wrap';
+			wrap.id = 'frame-wrap-' + newId;
+			wrap.innerHTML = `<iframe id="proxy-frame-${newId}"></iframe>`;
+			container.appendChild(wrap);
+			if (proxyReady && ctrlInstance) {
+				const frameEl = document.getElementById('proxy-frame-' + newId);
+				const newFrame = ctrlInstance.createFrame(frameEl);
+				const t = browserTabs.find(tab => tab.id === newId);
+				if (t) { t.frame = newFrame; t.url = 'https://duckduckgo.com'; t.title = 'Loading...'; newFrame.go(t.url); }
+			}
+			switchBrowserTab(newId);
+		}
+
+		function closeBrowserTab(e, id) {
+			e.stopPropagation();
+			if (browserTabs.length <= 1) return;
+			const idx = browserTabs.findIndex(t => t.id === id);
+			browserTabs.splice(idx, 1);
+			const wrap = document.getElementById('frame-wrap-' + id);
+			if (wrap) wrap.remove();
+			if (activeBrowserTabId === id) switchBrowserTab(browserTabs[Math.max(0, idx - 1)].id);
+			else renderBrowserTabs();
+		}
+
+		async function initProxy() {
+			if (proxyReady) return;
+			try {
+				const reg = await navigator.serviceWorker.register('https://intelligent-dedication-production-f8d8.up.railway.app/sw.js');
+				const sw = navigator.serviceWorker.controller || reg.active;
+				if (!sw) { await navigator.serviceWorker.ready; await new Promise(r => { navigator.serviceWorker.addEventListener('controllerchange', r, { once: true }) }); }
+				while (!window.LibcurlClient) { await new Promise(r => setTimeout(r, 50)); }
+				const { Controller } = $scramjetController;
+				const wispUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + 'intelligent-dedication-production-f8d8.up.railway.app/wisp/';
+				const ctrl = new Controller({ serviceworker: navigator.serviceWorker.controller || (await navigator.serviceWorker.ready).active, transport: new window.LibcurlClient({ wisp: wispUrl }), scramjetConfig: window.defaultConfigDev });
+				await ctrl.wait();
+				ctrlInstance = ctrl;
+				proxyFrame = ctrl.createFrame(document.getElementById('proxy-frame-tab-1'));
+				browserTabs[0].frame = proxyFrame;
+				browserTabs[0].url = 'https://duckduckgo.com';
+				browserTabs[0].title = 'Loading...';
+				proxyFrame.go(browserTabs[0].url);
+				proxyReady = true;
+			} catch (e) { console.error(e); }
+		}
+		initProxy();
+
+		function proxyNav() {
+			if (!proxyReady) { toast('Proxy not ready'); return }
+			const input = document.getElementById('proxy-url');
+			let v = input.value.trim(); if (!v) return;
+			if (!/^https?:\/\//.test(v) && !/\.\w{2,}/.test(v)) v = 'https://duckduckgo.com/?q=' + encodeURIComponent(v);
+			else if (!/^https?:\/\//.test(v)) v = 'https://' + v;
+			input.value = v;
+			const activeTab = browserTabs.find(t => t.id === activeBrowserTabId);
+			if (activeTab?.frame) { activeTab.frame.go(v); activeTab.url = v; activeTab.title = 'Loading...'; renderBrowserTabs(); }
+		}
+		function proxyBack() { proxyFrame?.back() }
+		function proxyFwd() { proxyFrame?.forward() }
+		function proxyReload() { proxyFrame?.reload() }
+		function proxyFullscreen() {
+			const container = document.getElementById('proxy-frames-container');
+			if (container.requestFullscreen) container.requestFullscreen();
+		}
+
+		// Init
+		initModelSelect();
+		renderCloudGames();
+	</script>
+	<script src="gamedata.js"></script>
+	<script>
+		renderItems('games-container', games);
+		renderItems('apps-container', apps);
+		renderItems('flash-container', flashGames);
+		renderItems('unblockers-container', unblockers);
+	</script>
+</body>
+
+</html>
